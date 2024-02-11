@@ -10,24 +10,25 @@ internal data class CodeArtifactEndpoint(
     val repository: String,
     val url: URI
 ) {
-  @get:JsonIgnore
-  val cacheKey: String
-    get() = url.toString()
+    @get:JsonIgnore
+    val cacheKey: String
+        get() = url.toString()
 
-  companion object {
-    fun fromUrl(url: URI): CodeArtifactEndpoint? {
-      val urlString = url.toString().removeSuffix("/")
-      val match = regex.matchEntire(urlString) ?: return null
-      return CodeArtifactEndpoint(
-          match.groups["domain"]!!.value,
-          match.groups["domainOwner"]!!.value,
-          match.groups["region"]!!.value,
-          match.groups["repository"]!!.value,
-          URI(urlString))
+    companion object {
+        fun fromUrl(url: URI): CodeArtifactEndpoint? {
+            val urlString = url.toString().removeSuffix("/")
+            val match = regex.matchEntire(urlString) ?: return null
+            return CodeArtifactEndpoint(
+                match.groups["domain"]!!.value,
+                match.groups["domainOwner"]!!.value,
+                match.groups["region"]!!.value,
+                match.groups["repository"]!!.value,
+                URI(urlString)
+            )
+        }
+
+        private val regex =
+            """^https://(?<domain>.*?)-(?<domainOwner>\d+).d.codeartifact.(?<region>.+?).amazonaws.com/maven/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
+                .toRegex()
     }
-
-    private val regex =
-        """^https://(?<domain>.*?)-(?<domainOwner>.*?).d.codeartifact.(?<region>.+?).amazonaws.com/maven/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
-            .toRegex()
-  }
 }

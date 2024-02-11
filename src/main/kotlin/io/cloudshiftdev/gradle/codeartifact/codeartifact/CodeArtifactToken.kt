@@ -9,5 +9,5 @@ internal data class CodeArtifactToken(
     val value: String,
     val expiration: Instant
 ) {
-  @get:JsonIgnore val expired = expiration.minus(20, ChronoUnit.MINUTES) < Instant.now()
+    @get:JsonIgnore val expired = expiration.minus(20, ChronoUnit.MINUTES) < Instant.now()
 }

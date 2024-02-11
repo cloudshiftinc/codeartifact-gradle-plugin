@@ -49,6 +49,10 @@ kotlin {
     jvmToolchain { languageVersion.set(JavaLanguageVersion.of(17)) }
 }
 
+ktfmt {
+    kotlinLangStyle()
+}
+
 tasks {
 
     withType<ValidatePlugins>().configureEach {

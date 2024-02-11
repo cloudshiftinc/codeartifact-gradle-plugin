@@ -19,64 +19,68 @@ import org.gradle.kotlin.dsl.registerIfAbsent
 import org.gradle.kotlin.dsl.withType
 
 public abstract class CodeArtifactPlugin : Plugin<Settings> {
-  private val logger = Logging.getLogger(CodeArtifactPlugin::class.java)
+    private val logger = Logging.getLogger(CodeArtifactPlugin::class.java)
 
-  override fun apply(settings: Settings): Unit =
-      settings.run {
-        val codeArtifactTokenProvider =
-            settings.gradle.sharedServices.registerIfAbsent(
-                "codeArtifactTokenProvider", CodeArtifactTokenProvider::class) {
-                  parameters {}
+    override fun apply(settings: Settings): Unit =
+        settings.run {
+            val codeArtifactTokenProvider =
+                settings.gradle.sharedServices.registerIfAbsent(
+                    "codeArtifactTokenProvider",
+                    CodeArtifactTokenProvider::class
+                ) {
+                    parameters {}
                 }
 
-        dependencyResolutionManagement.repositories.all {
-          configureCodeArtifactRepository(this, codeArtifactTokenProvider)
-        }
-
-        gradle.beforeProject {
-          plugins.withType<MavenPublishPlugin> {
-            configure<PublishingExtension> {
-              repositories.all { configureCodeArtifactRepository(this, codeArtifactTokenProvider) }
+            dependencyResolutionManagement.repositories.all {
+                configureCodeArtifactRepository(this, codeArtifactTokenProvider)
             }
-          }
-        }
-      }
 
-  private fun configureCodeArtifactRepository(
-      repository: ArtifactRepository,
-      codeArtifactTokenProvider: Provider<CodeArtifactTokenProvider>
-  ) {
-    if (repository !is MavenArtifactRepository) {
-      return
-    }
-
-    val endpoint = CodeArtifactEndpoint.fromUrl(repository.url)
-    when {
-      endpoint == null && repository.url.toString().contains("d.codeartifact") -> {
-        throw GradleException("Invalid CodeArtifact URL: ${repository.url}")
-      }
-      endpoint == null -> return
-      else -> {
-        repository.url = endpoint.url
-        repository.credentials {
-          username = "aws"
-          password = codeArtifactTokenProvider.get().tokenForEndpoint(endpoint)
+            gradle.beforeProject {
+                plugins.withType<MavenPublishPlugin> {
+                    configure<PublishingExtension> {
+                        repositories.all {
+                            configureCodeArtifactRepository(this, codeArtifactTokenProvider)
+                        }
+                    }
+                }
+            }
         }
-      }
+
+    private fun configureCodeArtifactRepository(
+        repository: ArtifactRepository,
+        codeArtifactTokenProvider: Provider<CodeArtifactTokenProvider>
+    ) {
+        if (repository !is MavenArtifactRepository) {
+            return
+        }
+
+        val endpoint = CodeArtifactEndpoint.fromUrl(repository.url)
+        when {
+            endpoint == null && repository.url.toString().contains("d.codeartifact") -> {
+                throw GradleException("Invalid CodeArtifact URL: ${repository.url}")
+            }
+            endpoint == null -> return
+            else -> {
+                repository.url = endpoint.url
+                repository.credentials {
+                    username = "aws"
+                    password = codeArtifactTokenProvider.get().tokenForEndpoint(endpoint)
+                }
+            }
+        }
     }
-  }
 }
 
 public fun RepositoryHandler.awsCodeArtifact(
     url: String,
     block: Action<MavenArtifactRepository> = Action {}
 ) {
-  val endpoint = CodeArtifactEndpoint.fromUrl(URI(url)) ?: error("Invalid CodeArtifact URL: $url")
-  maven {
-    this.name = "${endpoint.domain}-${endpoint.repository}".toPascalCase()
-    this.url = URI(url)
-    block.execute(this)
-  }
+    val endpoint = CodeArtifactEndpoint.fromUrl(URI(url)) ?: error("Invalid CodeArtifact URL: $url")
+    maven {
+        this.name = "${endpoint.domain}-${endpoint.repository}".toPascalCase()
+        this.url = URI(url)
+        block.execute(this)
+    }
 }
 
 public fun Project.isSnapshotVersion(): Boolean = version.toString().endsWith("SNAPSHOT")
