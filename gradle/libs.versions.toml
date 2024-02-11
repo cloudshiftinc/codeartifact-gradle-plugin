@@ -52,4 +52,4 @@ guava = { module = "com.google.guava:guava", version = "32.1.2-jre" }
 semver = { module = "io.github.z4kn4fein:semver", version = "1.4.2" }
 mustache = { module = "com.github.spullara.mustache.java:compiler", version = "0.9.10" }
 
-jetbrains-kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.4.0" }
+jetbrains-kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.5.0" }
