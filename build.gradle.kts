@@ -34,6 +34,7 @@ gradlePlugin {
             displayName = "Plugin providing CodeArtifact repositories support"
             description = "Settings plugin providing CodeArtifact repositories support"
             implementationClass = "io.cloudshiftdev.gradle.codeartifact.codeartifact.CodeArtifactPlugin"
+            tags.set(listOf("codeartifact", "aws", "repository"))
         }
     }
 }
