@@ -1,5 +1,6 @@
 package io.cloudshiftdev.gradle.codeartifact.codeartifact
 
+import io.cloudshiftdev.gradle.codeartifact.codeartifact.CodeArtifactEndpoint.Companion.toEndpoint
 import java.net.URI
 import javax.inject.Inject
 import net.pearx.kasechange.toPascalCase
@@ -53,7 +54,7 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
             return
         }
 
-        val endpoint = CodeArtifactEndpoint.fromUrl(repository.url)
+        val endpoint = repository.url.toEndpoint()
         when {
             endpoint == null -> return
             repository is DefaultMavenArtifactRepository -> {
@@ -81,7 +82,7 @@ public fun RepositoryHandler.awsCodeArtifact(
     url: String,
     block: Action<MavenArtifactRepository> = Action {}
 ) {
-    val endpoint = CodeArtifactEndpoint.fromUrl(URI(url)) ?: error("Invalid CodeArtifact URL: $url")
+    val endpoint = url.toEndpoint() ?: error("Invalid CodeArtifact URL: $url")
     maven {
         this.name = "${endpoint.domain}-${endpoint.repository}".toPascalCase()
         this.url = URI(url)

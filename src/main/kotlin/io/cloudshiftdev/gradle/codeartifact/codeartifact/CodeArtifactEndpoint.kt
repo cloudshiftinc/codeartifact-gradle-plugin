@@ -16,11 +16,11 @@ internal data class CodeArtifactEndpoint(
         get() = url.toString()
 
     companion object {
-        fun fromUrl(url: String): CodeArtifactEndpoint? {
+        private fun fromUrl(url: String): CodeArtifactEndpoint? {
             return fromUrl(URI(url))
         }
 
-        fun fromUrl(url: URI): CodeArtifactEndpoint? {
+        private fun fromUrl(url: URI): CodeArtifactEndpoint? {
             val urlString = url.toString()
             val match = regex.matchEntire(urlString) ?: return null
             return CodeArtifactEndpoint(
@@ -31,6 +31,10 @@ internal data class CodeArtifactEndpoint(
                 URI(urlString)
             )
         }
+
+        fun URI.toEndpoint(): CodeArtifactEndpoint? = fromUrl(this)
+
+        fun String.toEndpoint(): CodeArtifactEndpoint? = fromUrl(this)
 
         private val regex =
             """^https://(?<domain>.*?)-(?<domainOwner>.*?).d.codeartifact.(?<region>.+?).amazonaws.com/maven/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""

@@ -10,7 +10,6 @@ import com.google.crypto.tink.TinkJsonProtoKeysetFormat
 import com.google.crypto.tink.aead.AeadConfig
 import com.google.crypto.tink.aead.PredefinedAeadParameters
 import java.io.File
-import java.security.MessageDigest
 import org.gradle.api.logging.Logging
 
 internal class LocalCache {
@@ -62,9 +61,9 @@ internal class LocalCache {
         logger.debug("Storing token for {} in cache {}", token.endpoint, cacheFile)
 
         cacheFile.parentFile.mkdirs()
-        val json = mapper.writeValueAsString(token)
+        val tokenJson = mapper.writeValueAsString(token)
 
-        encrypt(json.toByteArray(), token.endpoint.cacheKey).let { cacheFile.writeBytes(it) }
+        encrypt(tokenJson, token.endpoint.cacheKey).let { cacheFile.writeBytes(it) }
     }
 
     private fun cacheFile(endpoint: CodeArtifactEndpoint): File {
@@ -78,10 +77,10 @@ internal class LocalCache {
         return aead.decrypt(cipherText, repositoryKey.toByteArray())
     }
 
-    private fun encrypt(plainText: ByteArray, repositoryKey: String): ByteArray {
+    private fun encrypt(plainText: String, repositoryKey: String): ByteArray {
         val keyset = loadKeyset()
         val aead = keyset.getPrimitive(Aead::class.java)
-        return aead.encrypt(plainText, repositoryKey.toByteArray())
+        return aead.encrypt(plainText.toByteArray(), repositoryKey.toByteArray())
     }
 
     private fun loadKeyset(): KeysetHandle {
@@ -106,9 +105,4 @@ internal class LocalCache {
             )
         keysetFile.writeText(serializedEncryptedKeyset)
     }
-}
-
-@OptIn(ExperimentalStdlibApi::class)
-private fun String.sha256(): String {
-    return MessageDigest.getInstance("SHA-256").digest(encodeToByteArray()).toHexString()
 }

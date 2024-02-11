@@ -1,6 +1,7 @@
 package io.cloudshiftdev.gradle.codeartifact.codeartifact
 
 import java.net.URI
+import java.security.MessageDigest
 import net.pearx.kasechange.toScreamingSnakeCase
 
 internal fun URI.queryParameters() =
@@ -12,4 +13,9 @@ internal fun URI.queryParameters() =
 internal fun resolveSystemVar(key: String): String? {
     return System.getProperty(key)?.takeIf(String::isNotBlank)
         ?: System.getenv(key.toScreamingSnakeCase())?.takeIf(String::isNotBlank)
+}
+
+@OptIn(ExperimentalStdlibApi::class)
+internal fun String.sha256(): String {
+    return MessageDigest.getInstance("SHA-256").digest(encodeToByteArray()).toHexString()
 }
