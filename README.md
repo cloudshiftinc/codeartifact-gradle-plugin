@@ -2,7 +2,7 @@
 
 This plugin provides support for using AWS CodeArtifact Maven reposistories as a Gradle repository.  
 
-Fetching of CodeArtifact tokens is handled by this plugin, with tokens being cached to reduce the number of requests to AWS.
+Fetching of CodeArtifact tokens is handled by this plugin, with tokens being securely cached to reduce the number of requests to AWS.
 
 ## Getting Started
 

@@ -33,4 +33,4 @@ jobs:
           GRADLE_PUBLISH_SECRET: '${{ secrets.PLUGIN_PORTAL_SECRET }}'
           ORG_GRADLE_PROJECT_SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           ORG_GRADLE_PROJECT_SIGNING_PWD: ${{ secrets.SIGNING_PASSWORD }}
-        run: ./gradlew publishPlugins
+        run: ./gradlew publishPlugins --no-configuration-cache

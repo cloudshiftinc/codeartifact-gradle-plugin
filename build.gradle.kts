@@ -1,12 +1,10 @@
 
-import com.vanniktech.maven.publish.GradlePublishPlugin
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     `kotlin-dsl`
-    id("com.gradle.plugin-publish") version "1.2.1"
-    id("com.vanniktech.maven.publish") version "0.27.0"
     signing
+    id("com.gradle.plugin-publish") version "1.2.1"
     id("com.ncorti.ktfmt.gradle") version "0.17.0"
 }
 
@@ -40,8 +38,10 @@ gradlePlugin {
     }
 }
 
-mavenPublishing {
-    configure(GradlePublishPlugin())
+signing {
+    val signingKey = findProperty("SIGNING_KEY") as? String
+    val signingPwd = findProperty("SIGNING_PWD") as? String
+    useInMemoryPgpKeys(signingKey, signingPwd)
 }
 
 kotlin {
