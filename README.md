@@ -10,7 +10,7 @@ Fetching of CodeArtifact tokens is handled by this plugin, with tokens being sec
 
 ```kotlin
 plugins {
-    id("io.cloudshiftdev.codeartifact")
+    id("io.cloudshiftdev.codeartifact") version "<latest>"
 }
 ```
 2. Specify your CodeArtifact repositories as required:
