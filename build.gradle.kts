@@ -28,8 +28,8 @@ dependencies {
 
 
 gradlePlugin {
-    website = ""
-    vcsUrl = ""
+    website = "https://github.com/cloudshiftinc/codeartifact-gradle-plugin"
+    vcsUrl = "https://github.com/cloudshiftinc/codeartifact-gradle-plugin"
     plugins {
         create("codeartifact") {
             id = "io.cloudshiftdev.codeartifact"
