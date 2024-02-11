@@ -64,8 +64,7 @@ A profile name can also be specified as part of the repository URL:
 
 ```kotlin
 repositories {
-        awsCodeArtifact(url = "https://<domain>-<owner>.d.codeartifact.<region>.amazonaws.com/maven/<repository>?codeartifact.profile=default")
-    }
-
+    awsCodeArtifact(url = "https://<domain>-<owner>.d.codeartifact.<region>.amazonaws.com/maven/<repository>?codeartifact.profile=default")
+}
 ```
 
