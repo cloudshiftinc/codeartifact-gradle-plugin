@@ -1,46 +1,45 @@
 package io.cloudshiftdev.gradle.codeartifact.codeartifact
 
 import java.net.URI
+import javax.inject.Inject
 import net.pearx.kasechange.toPascalCase
 import org.gradle.api.Action
-import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.dsl.RepositoryHandler
 import org.gradle.api.artifacts.repositories.ArtifactRepository
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
+import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.initialization.Settings
+import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
 import org.gradle.api.logging.Logging
+import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
+import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.plugins.MavenPublishPlugin
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Internal
 import org.gradle.kotlin.dsl.configure
-import org.gradle.kotlin.dsl.registerIfAbsent
+import org.gradle.kotlin.dsl.newInstance
+import org.gradle.kotlin.dsl.of
 import org.gradle.kotlin.dsl.withType
 
-public abstract class CodeArtifactPlugin : Plugin<Settings> {
+public abstract class CodeArtifactPlugin @Inject constructor(private val objects: ObjectFactory) :
+    Plugin<Settings> {
     private val logger = Logging.getLogger(CodeArtifactPlugin::class.java)
 
     override fun apply(settings: Settings): Unit =
         settings.run {
-            val codeArtifactTokenProvider =
-                settings.gradle.sharedServices.registerIfAbsent(
-                    "codeArtifactTokenProvider",
-                    CodeArtifactTokenProvider::class
-                ) {
-                    parameters {}
-                }
-
             dependencyResolutionManagement.repositories.all {
-                configureCodeArtifactRepository(this, codeArtifactTokenProvider)
+                configureCodeArtifactRepository(this, providers)
             }
 
             gradle.beforeProject {
                 plugins.withType<MavenPublishPlugin> {
                     configure<PublishingExtension> {
-                        repositories.all {
-                            configureCodeArtifactRepository(this, codeArtifactTokenProvider)
-                        }
+                        repositories.all { configureCodeArtifactRepository(this, providers) }
                     }
                 }
             }
@@ -48,7 +47,7 @@ public abstract class CodeArtifactPlugin : Plugin<Settings> {
 
     private fun configureCodeArtifactRepository(
         repository: ArtifactRepository,
-        codeArtifactTokenProvider: Provider<CodeArtifactTokenProvider>
+        providers: ProviderFactory,
     ) {
         if (repository !is MavenArtifactRepository) {
             return
@@ -56,18 +55,25 @@ public abstract class CodeArtifactPlugin : Plugin<Settings> {
 
         val endpoint = CodeArtifactEndpoint.fromUrl(repository.url)
         when {
-            endpoint == null && repository.url.toString().contains("d.codeartifact") -> {
-                throw GradleException("Invalid CodeArtifact URL: ${repository.url}")
-            }
             endpoint == null -> return
-            else -> {
-                repository.url = endpoint.url
-                repository.credentials {
-                    username = "aws"
-                    password = codeArtifactTokenProvider.get().tokenForEndpoint(endpoint)
-                }
+            repository is DefaultMavenArtifactRepository -> {
+                val tokenProvider =
+                    providers.of(CodeArtifactTokenValueSource::class) {
+                        parameters { this.endpoint = endpoint }
+                    }
+                repository.setConfiguredCredentials(createRepoCredentials(tokenProvider))
             }
+            else -> {}
         }
+    }
+
+    private fun createRepoCredentials(
+        codeArtifactTokenProvider: Provider<String>
+    ): PasswordCredentials {
+        val credentials = objects.newInstance<RepositoryCredentials>()
+        credentials.usernameProp.set("aws")
+        credentials.passwordProp.set(codeArtifactTokenProvider)
+        return credentials
     }
 }
 
@@ -90,3 +96,18 @@ public fun MavenArtifactRepository.isSnapshotRepo(): Boolean = name.endsWith("Sn
 public fun MavenArtifactRepository.isReleaseRepo(): Boolean = name.endsWith("Release")
 
 public fun MavenArtifactRepository.isLocalRepo(): Boolean = name.endsWith("Local")
+
+internal abstract class RepositoryCredentials : PasswordCredentials {
+
+    @get:Input abstract val usernameProp: Property<String>
+
+    @get:Internal abstract val passwordProp: Property<String>
+
+    @Input override fun getUsername(): String = usernameProp.get()
+
+    override fun setUsername(name: String?) = usernameProp.set(name)
+
+    @Internal override fun getPassword(): String = passwordProp.get()
+
+    override fun setPassword(pwd: String?) = passwordProp.set(pwd)
+}

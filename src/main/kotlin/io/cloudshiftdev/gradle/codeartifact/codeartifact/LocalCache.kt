@@ -39,11 +39,12 @@ internal class LocalCache {
             val decryptedBytes = decrypt(cacheFile.readBytes(), endpoint.cacheKey)
             val token: CodeArtifactToken = mapper.readValue(decryptedBytes)
             if (!token.expired) {
+                logger.debug("CodeArtifact token expired ${token.expiration}")
                 return token
             }
         } catch (thrown: Exception) {
-            logger.lifecycle(
-                "Failed to read cached CodeArtifact token {}: {}; re-issuing.",
+            logger.debug(
+                "Failed to read cached CodeArtifact token {}: {}",
                 cacheFile,
                 thrown.message
             )
@@ -58,7 +59,7 @@ internal class LocalCache {
     private fun store(token: CodeArtifactToken) {
         val cacheFile = cacheFile(token.endpoint)
 
-        logger.debug("Storing token for {} in cache {}", token.endpoint.url, cacheFile)
+        logger.debug("Storing token for {} in cache {}", token.endpoint, cacheFile)
 
         cacheFile.parentFile.mkdirs()
         val json = mapper.writeValueAsString(token)
@@ -91,7 +92,7 @@ internal class LocalCache {
         return TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
             keysetFile.readText(),
             masterKey.getPrimitive(Aead::class.java),
-            emptyAdditionalData
+            ByteArray(0)
         )
     }
 
@@ -101,12 +102,10 @@ internal class LocalCache {
             TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
                 keyset,
                 masterKey.getPrimitive(Aead::class.java),
-                emptyAdditionalData
+                ByteArray(0)
             )
         keysetFile.writeText(serializedEncryptedKeyset)
     }
-
-    private val emptyAdditionalData = ByteArray(0)
 }
 
 @OptIn(ExperimentalStdlibApi::class)

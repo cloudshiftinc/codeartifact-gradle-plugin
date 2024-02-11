@@ -1,6 +1,7 @@
 package io.cloudshiftdev.gradle.codeartifact.codeartifact
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import java.io.Serializable
 import java.net.URI
 
 internal data class CodeArtifactEndpoint(
@@ -9,14 +10,18 @@ internal data class CodeArtifactEndpoint(
     val region: String,
     val repository: String,
     val url: URI
-) {
+) : Serializable {
     @get:JsonIgnore
     val cacheKey: String
         get() = url.toString()
 
     companion object {
+        fun fromUrl(url: String): CodeArtifactEndpoint? {
+            return fromUrl(URI(url))
+        }
+
         fun fromUrl(url: URI): CodeArtifactEndpoint? {
-            val urlString = url.toString().removeSuffix("/")
+            val urlString = url.toString()
             val match = regex.matchEntire(urlString) ?: return null
             return CodeArtifactEndpoint(
                 match.groups["domain"]!!.value,
@@ -28,7 +33,7 @@ internal data class CodeArtifactEndpoint(
         }
 
         private val regex =
-            """^https://(?<domain>.*?)-(?<domainOwner>\d+).d.codeartifact.(?<region>.+?).amazonaws.com/maven/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
+            """^https://(?<domain>.*?)-(?<domainOwner>.*?).d.codeartifact.(?<region>.+?).amazonaws.com/maven/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
                 .toRegex()
     }
 }
