@@ -1,6 +1,6 @@
 # Gradle Plugin for AWS CodeArtifact
 
-This plugin provides support for using AWS CodeArtifact Maven reposistories as a Gradle repository.  
+This plugin provides support for using AWS CodeArtifact Maven repositories as a Gradle repository.  
 
 Fetching of CodeArtifact tokens is handled by this plugin, with tokens being securely cached to reduce the number of requests to AWS.
 
@@ -18,7 +18,6 @@ plugins {
 In `settings.gradle.kts`:
 ```kotlin
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         awsCodeArtifact(url = "https://<domain>-<owner>.d.codeartifact.<region>.amazonaws.com/maven/<repository>")
     }
