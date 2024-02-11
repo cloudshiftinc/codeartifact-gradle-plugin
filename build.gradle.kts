@@ -24,7 +24,6 @@ dependencies {
     implementation(libs.pearx.kasechange)
 }
 
-
 gradlePlugin {
     website = "https://github.com/cloudshiftinc/codeartifact-gradle-plugin"
     vcsUrl = "https://github.com/cloudshiftinc/codeartifact-gradle-plugin"
@@ -34,7 +33,7 @@ gradlePlugin {
             displayName = "Plugin providing CodeArtifact repositories support"
             description = "Settings plugin providing CodeArtifact repositories support"
             implementationClass = "io.cloudshiftdev.gradle.codeartifact.codeartifact.CodeArtifactPlugin"
-            tags.set(listOf("codeartifact", "aws", "repository"))
+            tags = listOf("codeartifact", "aws", "repository")
         }
     }
 }
@@ -53,8 +52,8 @@ kotlin {
 tasks {
 
     withType<ValidatePlugins>().configureEach {
-        enableStricterValidation.set(true)
-        failOnWarning.set(true)
+        enableStricterValidation = true
+        failOnWarning = true
     }
 
     named<KotlinCompile>("compileKotlin") {
