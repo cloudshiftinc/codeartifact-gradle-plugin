@@ -71,5 +71,5 @@ A profile name can also be specified as part of the repository URL:
 
 ## Compatibility
 
-This plugin requires Gradle 8.6 or later running on Java 17 or later.
+This plugin requires Gradle 8.6 or later running on Java 17 or later and is compatible with the Gradle Configuration Cache.
 
