@@ -6,37 +6,38 @@ Fetching of CodeArtifact tokens is handled by this plugin, with tokens being sec
 
 ## Getting Started
 
-1. Apply the plugin to you `settings.gradle.kts` script:
+1. Apply the plugin to the `settings.gradle.kts` script:
 
-```kotlin
-plugins {
-    id("io.cloudshiftdev.codeartifact") version "<latest>"
-}
-```
-2. Specify your CodeArtifact repositories as required:
-
-In `settings.gradle.kts`:
-```kotlin
-dependencyResolutionManagement {
-    repositories {
-        awsCodeArtifact(url = "https://<domain>-<owner>.d.codeartifact.<region>.amazonaws.com/maven/<repository>")
+    ```kotlin
+    plugins {
+        id("io.cloudshiftdev.codeartifact") version "<latest>"
     }
-}
-```
-
-For publishing, in `build.gradle.kts`:
-```kotlin
-publishing {
-    repositories {
-        awsCodeArtifact(url = "https://<domain>-<owner>.d.codeartifact.<region>.amazonaws.com/maven/<repository>")
+    ```
+2. Specify CodeArtifact repositories as required:
+    
+    In `settings.gradle.kts`:
+    ```kotlin
+    dependencyResolutionManagement {
+        repositories {
+            awsCodeArtifact(url = "https://<domain>-<owner>.d.codeartifact.<region>.amazonaws.com/maven/<repository>")
+        }
     }
-}
-```
-The `awsCodeArtifact` extension function can be used almost anywhere you can specify a repository in Gradle.
+    ```
+
+    For publishing, in `build.gradle.kts`:
+    ```kotlin
+    publishing {
+        repositories {
+            awsCodeArtifact(url = "https://<domain>-<owner>.d.codeartifact.<region>.amazonaws.com/maven/<repository>")
+        }
+    }
+    ```
+    The `awsCodeArtifact` extension function can be used almost anywhere you can specify a repository in Gradle.
+
 
 3. Pass AWS credentials to your build:
 
-### From an AWS Profile:
+### Via an AWS Profile:
 
 | System Property      | Environment Variable |Description|
 |----------------------|----------------------|---|
@@ -61,9 +62,13 @@ The plugin will use the default AWS credentials provider chain, which includes e
 
 A profile name can also be specified as part of the repository URL:
 
-```kotlin
-repositories {
-    awsCodeArtifact(url = "https://<domain>-<owner>.d.codeartifact.<region>.amazonaws.com/maven/<repository>?codeartifact.profile=default")
-}
-```
+    ```kotlin
+    repositories {
+        awsCodeArtifact(url = "https://<domain>-<owner>.d.codeartifact.<region>.amazonaws.com/maven/<repository>?codeartifact.profile=default")
+    }
+    ```
+
+## Compatibility
+
+This plugin requires Gradle 8.6 or later running on Java 17 or later.
 
