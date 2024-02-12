@@ -48,15 +48,14 @@ System properties can be provided in `gradle.properties`, e.g. `systemProp.codea
 
 ### From credentials
 
-| System Property                  | Environment Variable               | Description          |
-|----------------------------------|------------------------------------|----------------------|
-| codeartifact.aws.accessKeyId     | CODEARTIFACT_AWS_ACCESS_KEY_ID     | AWS access key id    |
-| codeartifact.aws.secretAccessKey | CODEARTIFACT_AWS_SECRET_ACCESS_KEY | AWS secretaccess key |
-| codeartifact.aws.sessionToken    | CODEARTIFACT_AWS_SESSION_TOKEN     | AWS session token    |
-| aws.accessKeyId                  | AWS_ACCESS_KEY_ID     | AWS access key id    |
-| aws.secretAccessKey              | AWS_SECRET_ACCESS_KEY | AWS secretaccess key |
-| aws.sessionToken                | AWS_SESSION_TOKEN     | AWS session token    |
-
+| System Property                  | Environment Variable               | Description           |
+|----------------------------------|------------------------------------|-----------------------|
+| codeartifact.aws.accessKeyId     | CODEARTIFACT_AWS_ACCESS_KEY_ID     | AWS access key id     |
+| codeartifact.aws.secretAccessKey | CODEARTIFACT_AWS_SECRET_ACCESS_KEY | AWS secret access key |
+| codeartifact.aws.sessionToken    | CODEARTIFACT_AWS_SESSION_TOKEN     | AWS session token     |
+| aws.accessKeyId                  | AWS_ACCESS_KEY_ID     | AWS access key id     |
+| aws.secretAccessKey              | AWS_SECRET_ACCESS_KEY | AWS secret access key |
+| aws.sessionToken                | AWS_SESSION_TOKEN     | AWS session token     |
 
 The plugin will use the default AWS credentials provider chain, which includes environment variables, system properties, and IAM roles.  If you need to use a specific profile or credentials file, you can specify them in your `gradle.properties` file.
 
