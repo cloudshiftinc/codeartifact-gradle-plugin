@@ -33,8 +33,7 @@ internal abstract class CodeArtifactTokenValueSource :
 
     private fun tokenForEndpoint(endpoint: CodeArtifactEndpoint): String {
         logger.info("Looking in cache for CodeArtifact token for {}", endpoint.url)
-        return localCache
-            .get(endpoint) {
+        return localCache.get(endpoint) {
                 logger.lifecycle("Fetching CodeArtifact token for {}", endpoint.url)
 
                 val queryParameters = endpoint.url.queryParameters()

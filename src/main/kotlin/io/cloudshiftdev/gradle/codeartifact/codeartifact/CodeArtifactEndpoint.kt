@@ -32,9 +32,9 @@ internal data class CodeArtifactEndpoint(
             )
         }
 
-        fun URI.toEndpoint(): CodeArtifactEndpoint? = fromUrl(this)
+        fun URI.toCodeArtifactEndpoint(): CodeArtifactEndpoint? = fromUrl(this)
 
-        fun String.toEndpoint(): CodeArtifactEndpoint? = fromUrl(this)
+        fun String.toCodeArtifactEndpoint(): CodeArtifactEndpoint? = fromUrl(this)
 
         private val regex =
             """^https://(?<domain>.*?)-(?<domainOwner>.*?).d.codeartifact.(?<region>.+?).amazonaws.com/maven/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
