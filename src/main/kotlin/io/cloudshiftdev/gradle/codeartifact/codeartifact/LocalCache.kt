@@ -15,42 +15,49 @@ import org.gradle.api.logging.Logging
 internal class LocalCache {
     private val logger = Logging.getLogger(LocalCache::class.java)
 
-    private val mapper = jacksonObjectMapper().registerModule(JavaTimeModule())
+    companion object {
+        private val mapper = jacksonObjectMapper().registerModule(JavaTimeModule())
 
-    private val cacheDir =
-        File(System.getProperty("user.home")).resolve(".gradle/caches/codeartifact")
-    private val keysetFile = cacheDir.resolve("codeartifact.keyset.json")
+        private val cacheDir =
+            File(System.getProperty("user.home")).resolve(".gradle/caches/codeartifact")
+        private val keysetFile = cacheDir.resolve("codeartifact.keyset.json")
 
-    private val masterKey: KeysetHandle =
-        TinkJsonProtoKeysetFormat.parseKeyset(
-            """{"primaryKeyId":40967502,"key":[{"keyData":{"typeUrl":"type.googleapis.com/google.crypto.tink.AesGcmKey","value":"GhDTsUr/cPpvS9YhiqngA1ql","keyMaterialType":"SYMMETRIC"},"status":"ENABLED","keyId":40967502,"outputPrefixType":"TINK"}]}""",
-            InsecureSecretKeyAccess.get()
-        )
+        private val noAssociatedData = ByteArray(0)
 
-    init {
-        AeadConfig.register()
+        private val masterKey: KeysetHandle =
+            TinkJsonProtoKeysetFormat.parseKeyset(
+                """{"primaryKeyId":40967502,"key":[{"keyData":{"typeUrl":"type.googleapis.com/google.crypto.tink.AesGcmKey","value":"GhDTsUr/cPpvS9YhiqngA1ql","keyMaterialType":"SYMMETRIC"},"status":"ENABLED","keyId":40967502,"outputPrefixType":"TINK"}]}""",
+                InsecureSecretKeyAccess.get(),
+            )
+
+        init {
+            AeadConfig.register()
+        }
     }
 
-    fun get(endpoint: CodeArtifactEndpoint, block: () -> CodeArtifactToken): CodeArtifactToken {
+    fun load(
+        endpoint: CodeArtifactEndpoint,
+        tokenSupplier: () -> CodeArtifactToken
+    ): CodeArtifactToken {
         val cacheFile = cacheFile(endpoint)
 
         try {
             val decryptedBytes = decrypt(cacheFile.readBytes(), endpoint.cacheKey)
             val token: CodeArtifactToken = mapper.readValue(decryptedBytes)
             if (!token.expired) {
-                logger.debug("CodeArtifact token expired ${token.expiration}")
+                logger.debug("CodeArtifact token expired {}", token.expiration)
                 return token
             }
         } catch (thrown: Exception) {
             logger.debug(
                 "Failed to read cached CodeArtifact token {}: {}",
                 cacheFile,
-                thrown.message
+                thrown.message,
             )
         }
 
         cacheFile.delete()
-        val token = block()
+        val token = tokenSupplier()
         store(token)
         return token
     }
@@ -71,16 +78,13 @@ internal class LocalCache {
     }
 
     private fun decrypt(cipherText: ByteArray, repositoryKey: String): ByteArray {
-        val keyset = loadKeyset()
-        val aead = keyset.getPrimitive(Aead::class.java)
-
-        return aead.decrypt(cipherText, repositoryKey.toByteArray())
+        return loadKeyset().primitive<Aead>().decrypt(cipherText, repositoryKey.toByteArray())
     }
 
     private fun encrypt(plainText: String, repositoryKey: String): ByteArray {
-        val keyset = loadKeyset()
-        val aead = keyset.getPrimitive(Aead::class.java)
-        return aead.encrypt(plainText.toByteArray(), repositoryKey.toByteArray())
+        return loadKeyset()
+            .primitive<Aead>()
+            .encrypt(plainText.toByteArray(), repositoryKey.toByteArray())
     }
 
     private fun loadKeyset(): KeysetHandle {
@@ -90,8 +94,8 @@ internal class LocalCache {
 
         return TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
             keysetFile.readText(),
-            masterKey.getPrimitive(Aead::class.java),
-            ByteArray(0)
+            masterKey.primitive(),
+            noAssociatedData,
         )
     }
 
@@ -100,9 +104,13 @@ internal class LocalCache {
         val serializedEncryptedKeyset =
             TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
                 keyset,
-                masterKey.getPrimitive(Aead::class.java),
-                ByteArray(0)
+                masterKey.primitive(),
+                noAssociatedData,
             )
         keysetFile.writeText(serializedEncryptedKeyset)
     }
+}
+
+private inline fun <reified T : Any> KeysetHandle.primitive(): T {
+    return this.getPrimitive(T::class.java)
 }
