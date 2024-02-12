@@ -1,6 +1,6 @@
 # Gradle Plugin for AWS CodeArtifact
 
-![Gradle Plugin Portal Version](https://img.shields.io/gradle-plugin-portal/v/io.cloudshiftdev.codeartifact?style=for-the-badge&cacheSeconds=900&link=https%3A%2F%2Fplugins.gradle.org%2Fplugin%2Fio.cloudshiftdev.codeartifact)
+[![Gradle Plugin Portal Version](https://img.shields.io/gradle-plugin-portal/v/io.cloudshiftdev.codeartifact?style=for-the-badge&cacheSeconds=900)](https://plugins.gradle.org/plugin/io.cloudshiftdev.codeartifact)
 
 This plugin provides support for using AWS CodeArtifact Maven repositories as a Gradle repository.  
 
