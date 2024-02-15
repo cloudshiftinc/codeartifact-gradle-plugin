@@ -7,6 +7,7 @@ import io.cloudshiftdev.gradle.codeartifact.codeartifact.CodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.codeartifact.codeArtifactClient
 import kotlin.time.measureTime
+import kotlin.time.measureTimedValue
 import kotlinx.coroutines.runBlocking
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.FileCollection
@@ -62,9 +63,12 @@ internal fun uploadGenericPackage(
         genericPackage.assets.forEachIndexed() { idx: Int, asset ->
             val isLastElement = idx == genericPackage.assets.size - 1
             runBlocking {
+                val (sha256, sha256Time) = measureTimedValue { asset.sha256() }
+                logger.lifecycle("Calculated SHA256 for asset '${asset.name}' in $sha256Time")
+
                 val timeTaken = measureTime {
                     logger.lifecycle(
-                        "Uploading ${asset.name} (size: ${asset.content.length()} to ${endpoint.url}"
+                        "Uploading CodeArtifact generic artifact asset '${asset.name}' (${genericPackage.namespace}/${genericPackage.name}/${genericPackage.version}) (size: ${asset.content.length()} to ${endpoint.url}"
                     )
                     codeArtifact.publishPackageVersion {
                         domain = endpoint.domain
@@ -74,7 +78,7 @@ internal fun uploadGenericPackage(
                         format = PackageFormat.Generic
                         `package` = genericPackage.name
                         packageVersion = genericPackage.version
-                        assetSha256 = asset.sha256()
+                        assetSha256 = sha256
                         assetName = asset.name
                         assetContent = asset.content.asByteStream()
                         unfinished = !isLastElement
