@@ -15,7 +15,9 @@ import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.UntrackedTask
 
+@UntrackedTask(because = "This task runs infrequently and deals with potentially large files")
 public abstract class UploadGenericArtifactsTask : DefaultTask() {
 
     @get:Input public abstract val repository: Property<String>
