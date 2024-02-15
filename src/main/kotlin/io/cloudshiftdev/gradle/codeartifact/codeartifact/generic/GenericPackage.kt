@@ -51,9 +51,10 @@ internal data class GenericPackage(
         }
 
         @OptIn(ExperimentalStdlibApi::class)
-        public fun sha256(): String {
+        fun sha256(): String {
             val digest = MessageDigest.getInstance("SHA-256")
-            DigestInputStream(content.inputStream(), digest).use { it.skip(Long.MAX_VALUE) }
+            val buffer = ByteArray(8192)
+            DigestInputStream(content.inputStream(), digest).use { it.read(buffer) }
             return digest.digest().toHexString()
         }
     }

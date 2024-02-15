@@ -6,9 +6,11 @@ import aws.smithy.kotlin.runtime.content.asByteStream
 import io.cloudshiftdev.gradle.codeartifact.codeartifact.CodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.codeartifact.codeArtifactClient
+import kotlin.time.measureTime
 import kotlinx.coroutines.runBlocking
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.FileCollection
+import org.gradle.api.logging.Logger
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
@@ -46,28 +48,39 @@ public abstract class UploadGenericArtifactsTask : DefaultTask() {
             genericPackage,
             repository.get().toCodeArtifactEndpoint()
                 ?: error("Invalid endpoint : ${repository.get()}"),
+            logger
         )
     }
 }
 
-internal fun uploadGenericPackage(genericPackage: GenericPackage, endpoint: CodeArtifactEndpoint) {
+internal fun uploadGenericPackage(
+    genericPackage: GenericPackage,
+    endpoint: CodeArtifactEndpoint,
+    logger: Logger
+) {
     codeArtifactClient(endpoint).use { codeArtifact ->
         genericPackage.assets.forEachIndexed() { idx: Int, asset ->
             val isLastElement = idx == genericPackage.assets.size - 1
             runBlocking {
-                codeArtifact.publishPackageVersion {
-                    domain = endpoint.domain
-                    domainOwner = endpoint.domainOwner
-                    repository = endpoint.repository
-                    namespace = genericPackage.namespace
-                    format = PackageFormat.Generic
-                    `package` = genericPackage.name
-                    packageVersion = genericPackage.version
-                    assetSha256 = asset.sha256()
-                    assetName = asset.name
-                    assetContent = asset.content.asByteStream()
-                    unfinished = !isLastElement
+                val timeTaken = measureTime {
+                    logger.lifecycle(
+                        "Uploading ${asset.name} (size: ${asset.content.length()} to ${endpoint.url}"
+                    )
+                    codeArtifact.publishPackageVersion {
+                        domain = endpoint.domain
+                        domainOwner = endpoint.domainOwner
+                        repository = endpoint.repository
+                        namespace = genericPackage.namespace
+                        format = PackageFormat.Generic
+                        `package` = genericPackage.name
+                        packageVersion = genericPackage.version
+                        assetSha256 = asset.sha256()
+                        assetName = asset.name
+                        assetContent = asset.content.asByteStream()
+                        unfinished = !isLastElement
+                    }
                 }
+                logger.lifecycle("Uploaded ${asset.name} in $timeTaken")
             }
         }
     }
