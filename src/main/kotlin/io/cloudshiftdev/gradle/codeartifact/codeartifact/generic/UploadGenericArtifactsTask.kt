@@ -64,7 +64,9 @@ internal fun uploadGenericPackage(
             val isLastElement = idx == genericPackage.assets.size - 1
             runBlocking {
                 val (sha256, sha256Time) = measureTimedValue { asset.sha256() }
-                logger.lifecycle("Calculated SHA256 for asset '${asset.name}' in $sha256Time")
+                logger.lifecycle(
+                    "Calculated SHA256 for asset '${asset.name}' in $sha256Time; $sha256"
+                )
 
                 val timeTaken = measureTime {
                     logger.lifecycle(
