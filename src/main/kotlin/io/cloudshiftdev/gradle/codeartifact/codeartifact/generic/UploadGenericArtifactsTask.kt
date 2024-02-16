@@ -2,9 +2,11 @@ package io.cloudshiftdev.gradle.codeartifact.codeartifact.generic
 
 import aws.sdk.kotlin.services.codeartifact.model.PackageFormat
 import aws.sdk.kotlin.services.codeartifact.publishPackageVersion
+import aws.sdk.kotlin.services.codeartifact.withConfig
 import aws.smithy.kotlin.runtime.content.asByteStream
 import io.cloudshiftdev.gradle.codeartifact.codeartifact.CodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
+import io.cloudshiftdev.gradle.codeartifact.codeartifact.PrecomputedHashInterceptor
 import io.cloudshiftdev.gradle.codeartifact.codeartifact.codeArtifactClient
 import kotlin.time.measureTime
 import kotlin.time.measureTimedValue
@@ -72,19 +74,24 @@ internal fun uploadGenericPackage(
                     logger.lifecycle(
                         "Uploading CodeArtifact generic artifact asset '${asset.name}' (${genericPackage.namespace}/${genericPackage.name}/${genericPackage.version}) (size: ${asset.content.length()} to ${endpoint.url}"
                     )
-                    codeArtifact.publishPackageVersion {
-                        domain = endpoint.domain
-                        domainOwner = endpoint.domainOwner
-                        repository = endpoint.repository
-                        namespace = genericPackage.namespace
-                        format = PackageFormat.Generic
-                        `package` = genericPackage.name
-                        packageVersion = genericPackage.version
-                        assetSha256 = sha256
-                        assetName = asset.name
-                        assetContent = asset.content.asByteStream()
-                        unfinished = !isLastElement
-                    }
+                    // workaround for https://github.com/awslabs/aws-sdk-kotlin/issues/1217
+                    codeArtifact
+                        .withConfig { interceptors += PrecomputedHashInterceptor(sha256) }
+                        .use {
+                            it.publishPackageVersion {
+                                domain = endpoint.domain
+                                domainOwner = endpoint.domainOwner
+                                repository = endpoint.repository
+                                namespace = genericPackage.namespace
+                                format = PackageFormat.Generic
+                                `package` = genericPackage.name
+                                packageVersion = genericPackage.version
+                                assetSha256 = sha256
+                                assetName = asset.name
+                                assetContent = asset.content.asByteStream()
+                                unfinished = !isLastElement
+                            }
+                        }
                 }
                 logger.lifecycle("Uploaded ${asset.name} in $timeTaken")
             }
