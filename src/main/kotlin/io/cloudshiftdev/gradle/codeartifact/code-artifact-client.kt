@@ -40,11 +40,14 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
 
     println(">>>\n ${System.getenv().entries.sortedBy { it.key }.joinToString("\n") { "${it.key}=${it.value}" }}")
 
+
     val bootstrapProviders = CredentialsProviderChain(providers)
-    val ssoRoleArnKey = "codeartifact.stsRoleArn"
+    val stsRoleArnKey = "codeartifact.stsRoleArn"
+    val stsRoleArn = resolveSystemVar(stsRoleArnKey)
+    println(">>> STS role ARN ${stsRoleArnKey}=${stsRoleArn}")
+
     val provider =
-        resolveSystemVar(ssoRoleArnKey)
-            ?.let {
+        stsRoleArn?.let {
                 StsAssumeRoleCredentialsProvider(
                     bootstrapCredentialsProvider = bootstrapProviders,
                     assumeRoleParameters =
@@ -67,6 +70,8 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
                     """.trimIndent(),
                     ),
                 )
+            }?.also {
+                println(">>> Using STS role: $it")
             } ?: bootstrapProviders
 
     return CachedCredentialsProvider(provider)
