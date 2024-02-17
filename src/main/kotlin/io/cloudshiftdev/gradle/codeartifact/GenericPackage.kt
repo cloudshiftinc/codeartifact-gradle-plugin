@@ -1,4 +1,4 @@
-package io.cloudshiftdev.gradle.codeartifact.generic
+package io.cloudshiftdev.gradle.codeartifact
 
 import java.io.File
 import java.security.DigestInputStream
@@ -7,11 +7,11 @@ import java.security.MessageDigest
 // A generic package consists of a package name, namespace, version, and one or more assets (or
 // files)
 
-internal data class GenericPackage(
-    val name: String,
-    val namespace: String,
-    val version: String,
-    val assets: List<Asset>
+public class GenericPackage(
+    public val name: String,
+    public val namespace: String,
+    public val version: String,
+    public val assets: List<Asset>
 ) {
 
     // https://docs.aws.amazon.com/codeartifact/latest/APIReference/API_PublishPackageVersion.html
@@ -36,7 +36,7 @@ internal data class GenericPackage(
         require(assets.isNotEmpty()) { "Package must have at least one asset" }
     }
 
-    internal data class Asset(val name: String, val content: File) {
+    public class Asset(public val name: String, public val content: File) {
         // https://docs.aws.amazon.com/codeartifact/latest/ug/generic-packages-overview.html
         init {
             require(name.isNotBlank()) { "Asset name cannot be blank" }
@@ -51,7 +51,7 @@ internal data class GenericPackage(
         }
 
         @OptIn(ExperimentalStdlibApi::class)
-        fun sha256(): String {
+        public fun sha256(): String {
             val digest = MessageDigest.getInstance("SHA-256")
             val buffer = ByteArray(8192)
             DigestInputStream(content.inputStream(), digest).use {
