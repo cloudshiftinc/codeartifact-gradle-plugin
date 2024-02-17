@@ -60,8 +60,8 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
                 )
             } ?: bootstrapProviders
 
-    logger.info(">>> ${ssoRoleArnKey.toScreamingSnakeCase()}")
-    logger.info(
+    logger.lifecycle(">>> ${ssoRoleArnKey.toScreamingSnakeCase()}")
+    logger.lifecycle(
         ">>> The environment: \n" +
             System.getenv()
                 .entries

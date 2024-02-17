@@ -29,8 +29,8 @@ internal abstract class CodeArtifactTokenValueSource :
             .load(endpoint) {
                 logger.lifecycle("Fetching CodeArtifact token for {}", endpoint.url)
 
-                runBlocking {
-                    codeArtifactClient(endpoint).use { codeArtifact ->
+                codeArtifactClient(endpoint).use { codeArtifact ->
+                    runBlocking {
                         codeArtifact
                             .getAuthorizationToken {
                                 domain = endpoint.domain
