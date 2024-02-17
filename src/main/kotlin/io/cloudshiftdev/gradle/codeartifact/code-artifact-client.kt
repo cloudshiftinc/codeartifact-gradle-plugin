@@ -16,6 +16,7 @@ import aws.smithy.kotlin.runtime.client.ProtocolRequestInterceptorContext
 import aws.smithy.kotlin.runtime.collections.Attributes
 import aws.smithy.kotlin.runtime.http.interceptors.HttpInterceptor
 import aws.smithy.kotlin.runtime.http.request.HttpRequest
+import net.pearx.kasechange.toScreamingSnakeCase
 import org.gradle.api.logging.Logging
 
 internal fun codeArtifactClient(endpoint: CodeArtifactEndpoint): CodeartifactClient {
@@ -55,10 +56,12 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
             }
             ?.also {
                 logger.info(
-                    "Using STS AssumeRoleCredentialsProvider with role ARN from $ssoRoleArnKey"
+                    "CodeArtifact: using StsAssumeRoleCredentialsProvider with role ARN from $ssoRoleArnKey / ${ssoRoleArnKey.toScreamingSnakeCase()}"
                 )
             } ?: bootstrapProviders
 
+    println(">>> ${ssoRoleArnKey.toScreamingSnakeCase()}")
+    println(">>> The environment: \n" + System.getenv().entries.sortedBy { it.key }.joinToString("\n") { "${it.key}=${it.value}" } + "\n<<<")
     return CachedCredentialsProvider(provider)
 }
 
