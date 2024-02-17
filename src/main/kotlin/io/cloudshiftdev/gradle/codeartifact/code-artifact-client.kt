@@ -16,6 +16,7 @@ import aws.smithy.kotlin.runtime.client.ProtocolRequestInterceptorContext
 import aws.smithy.kotlin.runtime.collections.Attributes
 import aws.smithy.kotlin.runtime.http.interceptors.HttpInterceptor
 import aws.smithy.kotlin.runtime.http.request.HttpRequest
+import org.gradle.api.logging.Logging
 
 internal fun codeArtifactClient(endpoint: CodeArtifactEndpoint): CodeartifactClient {
     return CodeartifactClient {
@@ -25,6 +26,8 @@ internal fun codeArtifactClient(endpoint: CodeArtifactEndpoint): CodeartifactCli
 }
 
 internal fun buildCredentialsProvider(queryParameters: Map<String, String>): CredentialsProvider {
+    val logger = Logging.getLogger("codeartifact-client")
+
     val profileKey = "codeartifact.profile"
 
     val providers =
@@ -35,20 +38,26 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
             CodeArtifactEnvironmentCredentialsProvider(),
 
             // https://docs.aws.amazon.com/sdk-for-kotlin/latest/developer-guide/credential-providers.html
-            DefaultChainCredentialsProvider()
+            DefaultChainCredentialsProvider(),
         )
 
     val bootstrapProviders = CredentialsProviderChain(providers)
     val ssoRoleArnKey = "codeartifact.stsRoleArn"
     val provider =
-        resolveSystemVar(ssoRoleArnKey)?.let {
-            StsAssumeRoleCredentialsProvider(
-                bootstrapCredentialsProvider = bootstrapProviders,
-                assumeRoleParameters =
-                    AssumeRoleParameters(roleArn = it, roleSessionName = "codeartifact-client")
-                // TODO - SECURITY: pass in scoped-down policy for codeartifact:*
-            )
-        } ?: bootstrapProviders
+        resolveSystemVar(ssoRoleArnKey)
+            ?.let {
+                StsAssumeRoleCredentialsProvider(
+                    bootstrapCredentialsProvider = bootstrapProviders,
+                    assumeRoleParameters =
+                        AssumeRoleParameters(roleArn = it, roleSessionName = "codeartifact-client"),
+                    // TODO - SECURITY: pass in scoped-down policy for codeartifact:*
+                )
+            }
+            ?.also {
+                logger.info(
+                    "Using STS AssumeRoleCredentialsProvider with role ARN from $ssoRoleArnKey"
+                )
+            } ?: bootstrapProviders
 
     return CachedCredentialsProvider(provider)
 }
@@ -57,14 +66,14 @@ private class CodeArtifactEnvironmentCredentialsProvider : CredentialsProvider {
     private fun requireEnv(variable: String): String =
         resolveSystemVar(variable)
             ?: throw ProviderConfigurationException(
-                "Missing value for environment variable `$variable`"
+                "Missing value for environment variable `$variable`",
             )
 
     override suspend fun resolve(attributes: Attributes): Credentials {
         return Credentials(
             accessKeyId = requireEnv("codeartifact.accessKeyId"),
             secretAccessKey = requireEnv("codeartifact.secretAccessKey"),
-            sessionToken = resolveSystemVar("codeartifact.sessionToken")
+            sessionToken = resolveSystemVar("codeartifact.sessionToken"),
         )
     }
 }
