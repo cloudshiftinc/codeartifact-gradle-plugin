@@ -6,6 +6,7 @@ import aws.sdk.kotlin.runtime.auth.credentials.ProfileCredentialsProvider
 import aws.sdk.kotlin.runtime.auth.credentials.ProviderConfigurationException
 import aws.sdk.kotlin.runtime.auth.credentials.StsAssumeRoleCredentialsProvider
 import aws.sdk.kotlin.services.codeartifact.CodeartifactClient
+import aws.smithy.kotlin.runtime.auth.awscredentials.CachedCredentialsProvider
 import aws.smithy.kotlin.runtime.auth.awscredentials.Credentials
 import aws.smithy.kotlin.runtime.auth.awscredentials.CredentialsProvider
 import aws.smithy.kotlin.runtime.auth.awscredentials.CredentialsProviderChain
@@ -23,7 +24,7 @@ internal fun codeArtifactClient(endpoint: CodeArtifactEndpoint): CodeartifactCli
     }
 }
 
-private fun buildCredentialsProvider(queryParameters: Map<String, String>): CredentialsProvider {
+internal fun buildCredentialsProvider(queryParameters: Map<String, String>): CredentialsProvider {
     val profileKey = "codeartifact.profile"
 
     val providers =
@@ -45,10 +46,11 @@ private fun buildCredentialsProvider(queryParameters: Map<String, String>): Cred
                 bootstrapCredentialsProvider = bootstrapProviders,
                 assumeRoleParameters =
                     AssumeRoleParameters(roleArn = it, roleSessionName = "codeartifact-client")
+                // TODO - SECURITY: pass in scoped-down policy for codeartifact:*
             )
         } ?: bootstrapProviders
 
-    return provider
+    return CachedCredentialsProvider(provider)
 }
 
 private class CodeArtifactEnvironmentCredentialsProvider : CredentialsProvider {

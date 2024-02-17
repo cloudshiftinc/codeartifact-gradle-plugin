@@ -36,7 +36,11 @@ public object CodeArtifactOperations {
                         )
                         // workaround for https://github.com/awslabs/aws-sdk-kotlin/issues/1217
                         codeArtifact
-                            .withConfig { interceptors += PrecomputedHashInterceptor(sha256) }
+                            .withConfig {
+                                interceptors += PrecomputedHashInterceptor(sha256)
+                                credentialsProvider =
+                                    buildCredentialsProvider(endpoint.url.queryParameters())
+                            }
                             .use {
                                 it.publishPackageVersion {
                                     domain = endpoint.domain
