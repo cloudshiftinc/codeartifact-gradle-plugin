@@ -16,6 +16,7 @@ import aws.smithy.kotlin.runtime.client.ProtocolRequestInterceptorContext
 import aws.smithy.kotlin.runtime.collections.Attributes
 import aws.smithy.kotlin.runtime.http.interceptors.HttpInterceptor
 import aws.smithy.kotlin.runtime.http.request.HttpRequest
+import net.pearx.kasechange.toScreamingSnakeCase
 
 internal fun codeArtifactClient(endpoint: CodeArtifactEndpoint): CodeartifactClient {
     return CodeartifactClient {
@@ -38,25 +39,30 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
             DefaultChainCredentialsProvider(),
         )
 
-    println(">>>\n ${System.getenv().entries.sortedBy { it.key }.joinToString("\n") { "${it.key}=${it.value}" }}")
-
+    println(
+        ">>>\n ${System.getenv().entries.sortedBy { it.key }.joinToString("\n") { "${it.key}=${it.value}" }}"
+    )
 
     val bootstrapProviders = CredentialsProviderChain(providers)
     val stsRoleArnKey = "codeartifact.stsRoleArn"
     val stsRoleArn = resolveSystemVar(stsRoleArnKey)
-    println(">>> STS role ARN ${stsRoleArnKey}=${stsRoleArn}")
+    println(">>> STS role ARN ${stsRoleArnKey}=${stsRoleArn}  envKey: ${stsRoleArnKey.toScreamingSnakeCase()}")
 
     val provider =
-        stsRoleArn?.let {
+        stsRoleArn
+            ?.let { roleArn ->
                 StsAssumeRoleCredentialsProvider(
                     bootstrapCredentialsProvider = bootstrapProviders,
                     assumeRoleParameters =
-                    AssumeRoleParameters(
-                        roleArn = it, roleSessionName = "codeartifact-client",
+                        AssumeRoleParameters(
+                            roleArn = roleArn,
+                            roleSessionName = "codeartifact-client",
 
-                        // scope down the policy so this client can *only* do CodeArtifact actions, regardless of
-                        // what the underlying policy allows
-                        policy = """
+                            // scope down the policy so this client can *only* do CodeArtifact
+                            // actions, regardless of
+                            // what the underlying policy allows
+                            policy =
+                                """
                         {
                           "Version": "2012-10-17",
                           "Statement": [
@@ -67,12 +73,12 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
                             }
                           ]
                         }
-                    """.trimIndent(),
-                    ),
+                    """
+                                    .trimIndent(),
+                        ),
                 )
-            }?.also {
-                println(">>> Using STS role: $it")
-            } ?: bootstrapProviders
+            }
+            ?.also { println(">>> Using STS role: $stsRoleArn") } ?: bootstrapProviders
 
     return CachedCredentialsProvider(provider)
 }
