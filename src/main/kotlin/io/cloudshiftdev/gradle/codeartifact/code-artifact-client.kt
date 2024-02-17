@@ -60,8 +60,15 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
                 )
             } ?: bootstrapProviders
 
-    println(">>> ${ssoRoleArnKey.toScreamingSnakeCase()}")
-    println(">>> The environment: \n" + System.getenv().entries.sortedBy { it.key }.joinToString("\n") { "${it.key}=${it.value}" } + "\n<<<")
+    logger.info(">>> ${ssoRoleArnKey.toScreamingSnakeCase()}")
+    logger.info(
+        ">>> The environment: \n" +
+            System.getenv()
+                .entries
+                .sortedBy { it.key }
+                .joinToString("\n") { "${it.key}=${it.value}" } +
+            "\n<<<"
+    )
     return CachedCredentialsProvider(provider)
 }
 
