@@ -16,7 +16,6 @@ import aws.smithy.kotlin.runtime.client.ProtocolRequestInterceptorContext
 import aws.smithy.kotlin.runtime.collections.Attributes
 import aws.smithy.kotlin.runtime.http.interceptors.HttpInterceptor
 import aws.smithy.kotlin.runtime.http.request.HttpRequest
-import org.gradle.api.logging.Logging
 
 internal fun codeArtifactClient(endpoint: CodeArtifactEndpoint): CodeartifactClient {
     return CodeartifactClient {
@@ -39,6 +38,8 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
             DefaultChainCredentialsProvider(),
         )
 
+    println(">>>\n ${System.getenv().entries.sortedBy { it.key }.joinToString("\n") { "${it.key}=${it.value}" }}")
+
     val bootstrapProviders = CredentialsProviderChain(providers)
     val ssoRoleArnKey = "codeartifact.stsRoleArn"
     val provider =
@@ -47,8 +48,24 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
                 StsAssumeRoleCredentialsProvider(
                     bootstrapCredentialsProvider = bootstrapProviders,
                     assumeRoleParameters =
-                        AssumeRoleParameters(roleArn = it, roleSessionName = "codeartifact-client"),
-                    // TODO - SECURITY: pass in scoped-down policy for codeartifact:*
+                    AssumeRoleParameters(
+                        roleArn = it, roleSessionName = "codeartifact-client",
+
+                        // scope down the policy so this client can *only* do CodeArtifact actions, regardless of
+                        // what the underlying policy allows
+                        policy = """
+                        {
+                          "Version": "2012-10-17",
+                          "Statement": [
+                            {
+                              "Effect": "Allow",
+                              "Action": "codeartifact:*",
+                              "Resource": "*"
+                            }
+                          ]
+                        }
+                    """.trimIndent(),
+                    ),
                 )
             } ?: bootstrapProviders
 
