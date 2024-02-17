@@ -16,7 +16,6 @@ import aws.smithy.kotlin.runtime.client.ProtocolRequestInterceptorContext
 import aws.smithy.kotlin.runtime.collections.Attributes
 import aws.smithy.kotlin.runtime.http.interceptors.HttpInterceptor
 import aws.smithy.kotlin.runtime.http.request.HttpRequest
-import net.pearx.kasechange.toScreamingSnakeCase
 
 internal fun codeArtifactClient(endpoint: CodeArtifactEndpoint): CodeartifactClient {
     return CodeartifactClient {
@@ -39,17 +38,11 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
             DefaultChainCredentialsProvider(),
         )
 
-    println(
-        ">>>\n ${System.getenv().entries.sortedBy { it.key }.joinToString("\n") { "${it.key}=${it.value}" }}"
-    )
-
     val bootstrapProviders = CredentialsProviderChain(providers)
     val stsRoleArnKey = "codeartifact.stsRoleArn"
-    val stsRoleArn = resolveSystemVar(stsRoleArnKey)
-    println(">>> STS role ARN ${stsRoleArnKey}=${stsRoleArn}  envKey: ${stsRoleArnKey.toScreamingSnakeCase()}")
 
     val provider =
-        stsRoleArn
+        resolveSystemVar(stsRoleArnKey)
             ?.let { roleArn ->
                 StsAssumeRoleCredentialsProvider(
                     bootstrapCredentialsProvider = bootstrapProviders,
@@ -70,6 +63,11 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
                               "Effect": "Allow",
                               "Action": "codeartifact:*",
                               "Resource": "*"
+                            },
+                            {
+                              "Effect": "Allow",
+                              "Action": " sts:GetServiceBearerToken",
+                              "Resource": "*"                           
                             }
                           ]
                         }
@@ -77,8 +75,7 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
                                     .trimIndent(),
                         ),
                 )
-            }
-            ?.also { println(">>> Using STS role: $stsRoleArn") } ?: bootstrapProviders
+            } ?: bootstrapProviders
 
     return CachedCredentialsProvider(provider)
 }
