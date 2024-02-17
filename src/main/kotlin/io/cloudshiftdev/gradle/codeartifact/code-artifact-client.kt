@@ -66,7 +66,7 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
                             },
                             {
                               "Effect": "Allow",
-                              "Action": " sts:GetServiceBearerToken",
+                              "Action": "sts:GetServiceBearerToken",
                               "Resource": "*"                           
                             }
                           ]
