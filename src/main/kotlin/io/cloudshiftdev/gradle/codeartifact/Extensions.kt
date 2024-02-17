@@ -10,12 +10,42 @@ internal fun URI.queryParameters() =
         key to value
     } ?: emptyMap()
 
-internal fun resolveSystemVar(key: String): String? {
-    return System.getProperty(key)?.takeIf(String::isNotBlank)
-        ?: System.getenv(key.toScreamingSnakeCase())?.takeIf(String::isNotBlank)
-}
+internal fun resolveSystemVar(key: String): String? = SystemVariableResolver.of(key).resolve(key)
 
 @OptIn(ExperimentalStdlibApi::class)
 internal fun String.sha256(): String {
     return MessageDigest.getInstance("SHA-256").digest(encodeToByteArray()).toHexString()
+}
+
+private interface SystemVariableResolver {
+    fun description(): String
+    fun resolve(key: String): String?
+
+    companion object {
+        fun of(key: String): SystemVariableResolver = composite(
+            systemProperty(key),
+            systemEnvironment(key.toScreamingSnakeCase())
+        )
+
+        private fun systemProperty(key: String) = object : SystemVariableResolver {
+            override fun description() = "System property '$key'"
+            override fun resolve(key: String): String? = System.getProperty(key)
+        }
+
+        private fun systemEnvironment(key: String) = object : SystemVariableResolver {
+            override fun description() = "System environment '$key'"
+            override fun resolve(key: String): String? = System.getenv(key)
+        }
+
+        private fun composite(vararg resolvers: SystemVariableResolver) =
+            object : SystemVariableResolver {
+                override fun description() = resolvers.joinToString(", ") { it.description() }
+                override fun resolve(key: String): String? {
+                    return resolvers.firstNotNullOfOrNull {
+                        it.resolve(key)?.takeIf(String::isNotBlank)
+                    }
+                }
+            }
+    }
+
 }
