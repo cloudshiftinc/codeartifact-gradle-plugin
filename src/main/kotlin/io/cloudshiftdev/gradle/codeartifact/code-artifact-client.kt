@@ -1,8 +1,10 @@
 package io.cloudshiftdev.gradle.codeartifact
 
+import aws.sdk.kotlin.runtime.auth.credentials.AssumeRoleParameters
 import aws.sdk.kotlin.runtime.auth.credentials.DefaultChainCredentialsProvider
 import aws.sdk.kotlin.runtime.auth.credentials.ProfileCredentialsProvider
 import aws.sdk.kotlin.runtime.auth.credentials.ProviderConfigurationException
+import aws.sdk.kotlin.runtime.auth.credentials.StsAssumeRoleCredentialsProvider
 import aws.sdk.kotlin.services.codeartifact.CodeartifactClient
 import aws.smithy.kotlin.runtime.auth.awscredentials.Credentials
 import aws.smithy.kotlin.runtime.auth.awscredentials.CredentialsProvider
@@ -23,6 +25,7 @@ internal fun codeArtifactClient(endpoint: CodeArtifactEndpoint): CodeartifactCli
 
 private fun buildCredentialsProvider(queryParameters: Map<String, String>): CredentialsProvider {
     val profileKey = "codeartifact.profile"
+
     val providers =
         listOfNotNull(
             (queryParameters[profileKey] ?: resolveSystemVar(profileKey))?.let {
@@ -34,7 +37,18 @@ private fun buildCredentialsProvider(queryParameters: Map<String, String>): Cred
             DefaultChainCredentialsProvider()
         )
 
-    return CredentialsProviderChain(providers)
+    val bootstrapProviders = CredentialsProviderChain(providers)
+    val ssoRoleArnKey = "codeartifact.stsRoleArn"
+    val provider =
+        resolveSystemVar(ssoRoleArnKey)?.let {
+            StsAssumeRoleCredentialsProvider(
+                bootstrapCredentialsProvider = bootstrapProviders,
+                assumeRoleParameters =
+                    AssumeRoleParameters(roleArn = it, roleSessionName = "codeartifact-client")
+            )
+        } ?: bootstrapProviders
+
+    return provider
 }
 
 private class CodeArtifactEnvironmentCredentialsProvider : CredentialsProvider {
