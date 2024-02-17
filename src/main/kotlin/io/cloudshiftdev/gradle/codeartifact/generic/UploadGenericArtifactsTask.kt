@@ -1,13 +1,13 @@
-package io.cloudshiftdev.gradle.codeartifact.codeartifact.generic
+package io.cloudshiftdev.gradle.codeartifact.generic
 
 import aws.sdk.kotlin.services.codeartifact.model.PackageFormat
 import aws.sdk.kotlin.services.codeartifact.publishPackageVersion
 import aws.sdk.kotlin.services.codeartifact.withConfig
 import aws.smithy.kotlin.runtime.content.asByteStream
-import io.cloudshiftdev.gradle.codeartifact.codeartifact.CodeArtifactEndpoint
-import io.cloudshiftdev.gradle.codeartifact.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
-import io.cloudshiftdev.gradle.codeartifact.codeartifact.PrecomputedHashInterceptor
-import io.cloudshiftdev.gradle.codeartifact.codeartifact.codeArtifactClient
+import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint
+import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
+import io.cloudshiftdev.gradle.codeartifact.PrecomputedHashInterceptor
+import io.cloudshiftdev.gradle.codeartifact.codeArtifactClient
 import kotlin.time.measureTime
 import kotlin.time.measureTimedValue
 import kotlinx.coroutines.runBlocking

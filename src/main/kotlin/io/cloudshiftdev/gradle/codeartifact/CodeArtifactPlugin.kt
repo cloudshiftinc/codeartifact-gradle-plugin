@@ -1,6 +1,6 @@
-package io.cloudshiftdev.gradle.codeartifact.codeartifact
+package io.cloudshiftdev.gradle.codeartifact
 
-import io.cloudshiftdev.gradle.codeartifact.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
+import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
 import java.net.URI
 import javax.inject.Inject
 import net.pearx.kasechange.toPascalCase

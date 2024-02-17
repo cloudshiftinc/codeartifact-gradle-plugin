@@ -1,4 +1,4 @@
-package io.cloudshiftdev.gradle.codeartifact.codeartifact
+package io.cloudshiftdev.gradle.codeartifact
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import java.time.Instant

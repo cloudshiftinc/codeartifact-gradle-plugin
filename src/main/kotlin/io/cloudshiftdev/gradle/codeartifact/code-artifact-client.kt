@@ -1,4 +1,4 @@
-package io.cloudshiftdev.gradle.codeartifact.codeartifact
+package io.cloudshiftdev.gradle.codeartifact
 
 import aws.sdk.kotlin.runtime.auth.credentials.DefaultChainCredentialsProvider
 import aws.sdk.kotlin.runtime.auth.credentials.ProfileCredentialsProvider

@@ -1,4 +1,4 @@
-package io.cloudshiftdev.gradle.codeartifact.codeartifact
+package io.cloudshiftdev.gradle.codeartifact
 
 import java.net.URI
 import java.security.MessageDigest

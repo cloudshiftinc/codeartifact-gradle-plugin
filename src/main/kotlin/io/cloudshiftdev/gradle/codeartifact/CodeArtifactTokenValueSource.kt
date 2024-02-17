@@ -1,4 +1,4 @@
-package io.cloudshiftdev.gradle.codeartifact.codeartifact
+package io.cloudshiftdev.gradle.codeartifact
 
 import aws.sdk.kotlin.services.codeartifact.getAuthorizationToken
 import aws.smithy.kotlin.runtime.time.toJvmInstant

@@ -1,4 +1,4 @@
-package io.cloudshiftdev.gradle.codeartifact.codeartifact.generic
+package io.cloudshiftdev.gradle.codeartifact.generic
 
 import java.io.File
 import java.security.DigestInputStream
