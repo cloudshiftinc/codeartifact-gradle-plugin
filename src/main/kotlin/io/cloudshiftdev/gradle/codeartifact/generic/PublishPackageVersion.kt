@@ -23,7 +23,7 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
 
 @UntrackedTask(because = "This task runs infrequently and deals with potentially large files")
-public abstract class UploadGenericArtifactsTask : DefaultTask() {
+public abstract class PublishPackageVersion : DefaultTask() {
 
     @get:Input public abstract val repository: Property<String>
 
@@ -38,7 +38,7 @@ public abstract class UploadGenericArtifactsTask : DefaultTask() {
     public abstract var artifacts: FileCollection
 
     @TaskAction
-    public fun uploadArtifacts() {
+    public fun publish() {
         val genericPackage =
             GenericPackage(
                 packageName.get(),
@@ -47,7 +47,7 @@ public abstract class UploadGenericArtifactsTask : DefaultTask() {
                 artifacts.map { GenericPackage.Asset(it.name, it) },
             )
 
-        uploadGenericPackage(
+        publishPackageVersion(
             genericPackage,
             repository.get().toCodeArtifactEndpoint()
                 ?: error("Invalid endpoint : ${repository.get()}"),
@@ -56,7 +56,7 @@ public abstract class UploadGenericArtifactsTask : DefaultTask() {
     }
 }
 
-internal fun uploadGenericPackage(
+internal fun publishPackageVersion(
     genericPackage: GenericPackage,
     endpoint: CodeArtifactEndpoint,
     logger: Logger
