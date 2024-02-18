@@ -1,9 +1,5 @@
 package io.cloudshiftdev.gradle.codeartifact
 
-import aws.sdk.kotlin.services.codeartifact.getAuthorizationToken
-import aws.smithy.kotlin.runtime.time.toJvmInstant
-import kotlin.time.Duration.Companion.hours
-import kotlinx.coroutines.runBlocking
 import org.gradle.api.logging.Logging
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.ValueSource
@@ -28,24 +24,7 @@ internal abstract class CodeArtifactTokenValueSource :
         return localCache
             .load(endpoint) {
                 logger.lifecycle("Fetching CodeArtifact token for {}", endpoint.url)
-
-                codeArtifactClient(endpoint).use { codeArtifact ->
-                    runBlocking {
-                        codeArtifact
-                            .getAuthorizationToken {
-                                domain = endpoint.domain
-                                domainOwner = endpoint.domainOwner
-                                durationSeconds = 12.hours.inWholeSeconds
-                            }
-                            .let {
-                                CodeArtifactToken(
-                                    endpoint = endpoint,
-                                    value = it.authorizationToken!!,
-                                    expiration = it.expiration?.toJvmInstant()!!,
-                                )
-                            }
-                    }
-                }
+                CodeArtifactOperations.getAuthorizationToken(endpoint)
             }
             .value
     }

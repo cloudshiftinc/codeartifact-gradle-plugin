@@ -1,5 +1,6 @@
 package io.cloudshiftdev.gradle.codeartifact.task
 
+import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactOperations
 import io.cloudshiftdev.gradle.codeartifact.GenericPackage
 import org.gradle.api.DefaultTask
@@ -37,6 +38,9 @@ public abstract class PublishPackageVersion : DefaultTask() {
                 artifacts.map { GenericPackage.Asset(it.name, it) },
             )
 
-        CodeArtifactOperations.publishPackageVersion(genericPackage, repositoryUrl.get())
+        CodeArtifactOperations.publishPackageVersion(
+            genericPackage,
+            repositoryUrl.get().toCodeArtifactEndpoint()
+        )
     }
 }
