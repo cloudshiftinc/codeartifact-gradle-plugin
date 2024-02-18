@@ -2,9 +2,10 @@
 
 [![Gradle Plugin Portal Version](https://img.shields.io/gradle-plugin-portal/v/io.cloudshiftdev.codeartifact?style=for-the-badge&cacheSeconds=900)](https://plugins.gradle.org/plugin/io.cloudshiftdev.codeartifact)
 
-This plugin provides support for using AWS CodeArtifact Maven repositories as a Gradle repository.  
+This plugin provides support for using AWS CodeArtifact Maven repositories as a Gradle repository.
 
-Fetching of CodeArtifact tokens is handled by this plugin, with tokens being securely cached to reduce the number of requests to AWS.
+Fetching of CodeArtifact tokens is handled by this plugin, with tokens being securely cached to reduce the number of
+requests to AWS.
 
 ## Getting Started
 
@@ -16,8 +17,8 @@ Fetching of CodeArtifact tokens is handled by this plugin, with tokens being sec
     }
     ```
 2. Specify CodeArtifact repositories as required:
-    
-    In `settings.gradle.kts`:
+
+   In `settings.gradle.kts`:
     ```kotlin
     dependencyResolutionManagement {
         repositories {
@@ -26,7 +27,7 @@ Fetching of CodeArtifact tokens is handled by this plugin, with tokens being sec
     }
     ```
 
-    For publishing, in `build.gradle.kts`:
+   For publishing, in `build.gradle.kts`:
     ```kotlin
     publishing {
         repositories {
@@ -34,17 +35,17 @@ Fetching of CodeArtifact tokens is handled by this plugin, with tokens being sec
         }
     }
     ```
-    The `awsCodeArtifact` extension function can be used almost anywhere you can specify a repository in Gradle.
+   The `awsCodeArtifact` extension function can be used almost anywhere you can specify a repository in Gradle.
 
 
 3. Pass AWS credentials to your build:
 
 ### Via an AWS Profile:
 
-| System Property      | Environment Variable |Description|
-|----------------------|----------------------|---|
-| codeartifact.profile | CODEARTIFACT_PROFILE |The name of the AWS profile to use|
-| aws.profile          | AWS_PROFILE          |The name of the AWS profile to use|
+| System Property      | Environment Variable | Description                        |
+|----------------------|----------------------|------------------------------------|
+| codeartifact.profile | CODEARTIFACT_PROFILE | The name of the AWS profile to use |
+| aws.profile          | AWS_PROFILE          | The name of the AWS profile to use |
 
 System properties can be provided in `gradle.properties`, e.g. `systemProp.codeartifact.profile=default`
 
@@ -55,11 +56,14 @@ System properties can be provided in `gradle.properties`, e.g. `systemProp.codea
 | codeartifact.aws.accessKeyId     | CODEARTIFACT_AWS_ACCESS_KEY_ID     | AWS access key id     |
 | codeartifact.aws.secretAccessKey | CODEARTIFACT_AWS_SECRET_ACCESS_KEY | AWS secret access key |
 | codeartifact.aws.sessionToken    | CODEARTIFACT_AWS_SESSION_TOKEN     | AWS session token     |
-| aws.accessKeyId                  | AWS_ACCESS_KEY_ID     | AWS access key id     |
-| aws.secretAccessKey              | AWS_SECRET_ACCESS_KEY | AWS secret access key |
-| aws.sessionToken                | AWS_SESSION_TOKEN     | AWS session token     |
+| aws.accessKeyId                  | AWS_ACCESS_KEY_ID                  | AWS access key id     |
+| aws.secretAccessKey              | AWS_SECRET_ACCESS_KEY              | AWS secret access key |
+| aws.sessionToken                 | AWS_SESSION_TOKEN                  | AWS session token     |
+| codeartifact.stsRoleArn          | CODEARTIFACT_STS_ROLE_ARN          | AWS role to assume    |
 
-The plugin will use the default AWS credentials provider chain, which includes environment variables, system properties, and IAM roles.  If you need to use a specific profile or credentials file, you can specify them in your `gradle.properties` file.
+The plugin will use the default AWS credentials provider chain, which includes environment variables, system properties,
+and IAM roles. If you need to use a specific profile or credentials file, you can specify them in
+your `gradle.properties` file.
 
 A profile name can also be specified as part of the repository URL:
 
@@ -69,7 +73,13 @@ A profile name can also be specified as part of the repository URL:
     }
     ```
 
+Assumption of a role is supported via `codeartifact.stsRoleArn` property or `CODEARTIFACT_STS_ROLE_ARN` environment
+variable; setting either of these to a role ARN will cause the plugin to assume the specified role, using credentials
+resolved by any of the other mechanisms described above.  When a role is assumed it uses an in-line scoped-down policy to
+limit role permissions to those required for CodeArtifact.
+
 ## Compatibility
 
-This plugin requires Gradle 8.6 or later running on Java 17 or later and is compatible with the Gradle Configuration Cache.
+This plugin requires Gradle 8.6 or later running on Java 17 or later and is compatible with the Gradle Configuration
+Cache.
 

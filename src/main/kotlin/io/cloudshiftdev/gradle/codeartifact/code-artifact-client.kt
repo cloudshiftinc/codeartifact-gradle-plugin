@@ -42,20 +42,19 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
     val stsRoleArnKey = "codeartifact.stsRoleArn"
 
     val provider =
-        resolveSystemVar(stsRoleArnKey)
-            ?.let { roleArn ->
-                StsAssumeRoleCredentialsProvider(
-                    bootstrapCredentialsProvider = bootstrapProviders,
-                    assumeRoleParameters =
-                        AssumeRoleParameters(
-                            roleArn = roleArn,
-                            roleSessionName = "codeartifact-client",
+        resolveSystemVar(stsRoleArnKey)?.let { roleArn ->
+            StsAssumeRoleCredentialsProvider(
+                bootstrapCredentialsProvider = bootstrapProviders,
+                assumeRoleParameters =
+                    AssumeRoleParameters(
+                        roleArn = roleArn,
+                        roleSessionName = "codeartifact-client",
 
-                            // scope down the policy so this client can *only* do CodeArtifact
-                            // actions, regardless of
-                            // what the underlying policy allows
-                            policy =
-                                """
+                        // scope down the policy so this client can *only* do CodeArtifact
+                        // actions, regardless of
+                        // what the underlying policy allows
+                        policy =
+                            """
                         {
                           "Version": "2012-10-17",
                           "Statement": [
@@ -72,10 +71,10 @@ internal fun buildCredentialsProvider(queryParameters: Map<String, String>): Cre
                           ]
                         }
                     """
-                                    .trimIndent(),
-                        ),
-                )
-            } ?: bootstrapProviders
+                                .trimIndent(),
+                    ),
+            )
+        } ?: bootstrapProviders
 
     return CachedCredentialsProvider(provider)
 }

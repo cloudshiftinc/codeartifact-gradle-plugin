@@ -10,8 +10,9 @@ internal fun URI.queryParameters() =
         key to value
     } ?: emptyMap()
 
-internal fun resolveSystemVar(key: String): String? = System.getProperty(key)?.takeIf(String::isNotBlank)
-    ?: System.getenv(key.toScreamingSnakeCase())?.takeIf(String::isNotBlank)
+internal fun resolveSystemVar(key: String): String? =
+    System.getProperty(key)?.takeIf(String::isNotBlank)
+        ?: System.getenv(key.toScreamingSnakeCase())?.takeIf(String::isNotBlank)
 
 @OptIn(ExperimentalStdlibApi::class)
 internal fun String.sha256(): String {
