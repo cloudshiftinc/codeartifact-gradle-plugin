@@ -17,19 +17,15 @@ import aws.smithy.kotlin.runtime.auth.awscredentials.CredentialsProviderChain
 import aws.smithy.kotlin.runtime.collections.Attributes
 import aws.smithy.kotlin.runtime.content.asByteStream
 import aws.smithy.kotlin.runtime.time.toJvmInstant
-import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.measureTime
 import kotlin.time.measureTimedValue
 import kotlinx.coroutines.runBlocking
 import org.gradle.api.logging.Logging
 
-public object CodeArtifactOperations {
+internal object CodeArtifactOperations {
     private val logger = Logging.getLogger(CodeArtifactOperations::class.java)
 
-    public fun getAuthorizationToken(codeArtifactRepositoryUrl: String): String {
-        return getAuthorizationToken(codeArtifactRepositoryUrl.toCodeArtifactEndpoint()).value
-    }
 
     internal fun getAuthorizationToken(endpoint: CodeArtifactEndpoint): CodeArtifactToken {
         return codeArtifactClient(endpoint).use { codeArtifact ->
@@ -66,13 +62,6 @@ public object CodeArtifactOperations {
                 )
             }
         }
-    }
-
-    public fun publishPackageVersion(
-        genericPackage: GenericPackage,
-        codeArtifactRepositoryUrl: String
-    ) {
-        publishPackageVersion(genericPackage, codeArtifactRepositoryUrl.toCodeArtifactEndpoint())
     }
 
     private fun publishArtifact(

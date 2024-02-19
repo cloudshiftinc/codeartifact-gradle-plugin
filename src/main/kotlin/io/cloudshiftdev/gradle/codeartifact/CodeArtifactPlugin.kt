@@ -6,7 +6,6 @@ import javax.inject.Inject
 import net.pearx.kasechange.toPascalCase
 import org.gradle.api.Action
 import org.gradle.api.Plugin
-import org.gradle.api.Project
 import org.gradle.api.artifacts.dsl.RepositoryHandler
 import org.gradle.api.artifacts.repositories.ArtifactRepository
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
@@ -91,13 +90,13 @@ public fun RepositoryHandler.awsCodeArtifact(
     }
 }
 
-public fun Project.isSnapshotVersion(): Boolean = version.toString().endsWith("SNAPSHOT")
-
-public fun MavenArtifactRepository.isSnapshotRepo(): Boolean = name.endsWith("Snapshot")
-
-public fun MavenArtifactRepository.isReleaseRepo(): Boolean = name.endsWith("Release")
-
-public fun MavenArtifactRepository.isLocalRepo(): Boolean = name.endsWith("Local")
+//public fun Project.isSnapshotVersion(): Boolean = version.toString().endsWith("SNAPSHOT")
+//
+//public fun MavenArtifactRepository.isSnapshotRepo(): Boolean = name.endsWith("Snapshot")
+//
+//public fun MavenArtifactRepository.isReleaseRepo(): Boolean = name.endsWith("Release")
+//
+//public fun MavenArtifactRepository.isLocalRepo(): Boolean = name.endsWith("Local")
 
 internal abstract class RepositoryCredentials : PasswordCredentials {
 
