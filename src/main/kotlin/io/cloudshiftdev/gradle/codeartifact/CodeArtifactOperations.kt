@@ -9,7 +9,6 @@ import aws.sdk.kotlin.services.codeartifact.CodeartifactClient
 import aws.sdk.kotlin.services.codeartifact.getAuthorizationToken
 import aws.sdk.kotlin.services.codeartifact.model.PackageFormat
 import aws.sdk.kotlin.services.codeartifact.publishPackageVersion
-import aws.sdk.kotlin.services.codeartifact.withConfig
 import aws.smithy.kotlin.runtime.auth.awscredentials.CachedCredentialsProvider
 import aws.smithy.kotlin.runtime.auth.awscredentials.Credentials
 import aws.smithy.kotlin.runtime.auth.awscredentials.CredentialsProvider
@@ -82,23 +81,19 @@ internal object CodeArtifactOperations {
                     "Uploading CodeArtifact generic artifact asset '${asset.name}' (${genericPackage.namespace}/${genericPackage.name}/${genericPackage.version}) (size: ${asset.content.length()} to ${endpoint.url}",
                 )
                 // workaround for https://github.com/awslabs/aws-sdk-kotlin/issues/1217
-                codeArtifact
-                    .withConfig { interceptors += PrecomputedHashInterceptor(sha256) }
-                    .use {
-                        it.publishPackageVersion {
-                            domain = endpoint.domain
-                            domainOwner = endpoint.domainOwner
-                            repository = endpoint.repository
-                            namespace = genericPackage.namespace
-                            format = PackageFormat.Generic
-                            `package` = genericPackage.name
-                            packageVersion = genericPackage.version
-                            assetSha256 = sha256
-                            assetName = asset.name
-                            assetContent = asset.content.asByteStream()
-                            unfinished = !finished
-                        }
-                    }
+                codeArtifact.publishPackageVersion {
+                    domain = endpoint.domain
+                    domainOwner = endpoint.domainOwner
+                    repository = endpoint.repository
+                    namespace = genericPackage.namespace
+                    format = PackageFormat.Generic
+                    `package` = genericPackage.name
+                    packageVersion = genericPackage.version
+                    assetSha256 = sha256
+                    assetName = asset.name
+                    assetContent = asset.content.asByteStream()
+                    unfinished = !finished
+                }
             }
             logger.lifecycle("Uploaded ${asset.name} in $timeTaken")
         }
@@ -135,15 +130,15 @@ internal object CodeArtifactOperations {
                 StsAssumeRoleCredentialsProvider(
                     bootstrapCredentialsProvider = bootstrapProviders,
                     assumeRoleParameters =
-                        AssumeRoleParameters(
-                            roleArn = roleArn,
-                            roleSessionName = "codeartifact-client",
+                    AssumeRoleParameters(
+                        roleArn = roleArn,
+                        roleSessionName = "codeartifact-client",
 
-                            // scope down the policy so this client can *only* do CodeArtifact
-                            // actions, regardless of
-                            // what the underlying policy allows
-                            policy =
-                                """
+                        // scope down the policy so this client can *only* do CodeArtifact
+                        // actions, regardless of
+                        // what the underlying policy allows
+                        policy =
+                        """
                         {
                           "Version": "2012-10-17",
                           "Statement": [
@@ -160,8 +155,8 @@ internal object CodeArtifactOperations {
                           ]
                         }
                     """
-                                    .trimIndent(),
-                        ),
+                            .trimIndent(),
+                    ),
                 )
             } ?: bootstrapProviders
 
