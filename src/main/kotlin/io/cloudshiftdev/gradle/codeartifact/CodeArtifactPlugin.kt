@@ -38,11 +38,10 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
                 configureCodeArtifactRepository(this, providers)
             }
 
-            pluginManagement.repositories.all {
-                configureCodeArtifactRepository(this, providers)
-            }
-
             gradle.beforeProject {
+                buildscript.repositories.all {
+                    configureCodeArtifactRepository(this, providers)
+                }
                 plugins.withType<MavenPublishPlugin> {
                     configure<PublishingExtension> {
                         repositories.all { configureCodeArtifactRepository(this, providers) }
