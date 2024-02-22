@@ -14,6 +14,7 @@ import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.initialization.Settings
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
+import org.gradle.api.invocation.Gradle
 import org.gradle.api.logging.Logging
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.plugins.PluginAware
@@ -35,11 +36,24 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     Plugin<PluginAware> {
     private val logger = Logging.getLogger(CodeArtifactPlugin::class.java)
 
-    override fun apply(target: PluginAware): Unit {
+    override fun apply(target: PluginAware) {
         when (target) {
             is Project -> applyToProject(target)
             is Settings -> applyToSettings(target)
+            is Gradle -> applyToGradle(target)
             else -> error("CodeArtifactPlugin is not compatible with ${target.javaClass.simpleName}")
+        }
+    }
+
+    private fun applyToGradle(gradle: Gradle) {
+        gradle.beforeSettings {
+            buildscript.repositories.all {
+                configureCodeArtifactRepository(this, providers)
+            }
+            pluginManagement.repositories.all {
+                configureCodeArtifactRepository(this, providers)
+            }
+            pluginManager.apply(CodeArtifactPlugin::class)
         }
     }
 
@@ -109,7 +123,7 @@ public fun RepositoryHandler.awsCodeArtifact(
     url: String,
     block: Action<MavenArtifactRepository> = Action {}
 ) {
-    val endpoint = url.toCodeArtifactEndpoint() ?: error("Invalid CodeArtifact URL: $url")
+    val endpoint = url.toCodeArtifactEndpoint()
     maven {
         this.name = "${endpoint.domain}-${endpoint.repository}".toPascalCase()
         this.url = URI(url)
