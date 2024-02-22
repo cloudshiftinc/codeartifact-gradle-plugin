@@ -44,9 +44,9 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     }
 
     private fun applyToSettings(settings: Settings) {
-//        settings.pluginManagement.repositories.all {
-//            configureCodeArtifactRepository(this, settings.providers)
-//        }
+        settings.pluginManagement.repositories.all {
+            configureCodeArtifactRepository(this, settings.providers)
+        }
 
         settings.dependencyResolutionManagement.repositories.all {
             configureCodeArtifactRepository(this, settings.providers)
