@@ -1,6 +1,7 @@
 package io.cloudshiftdev.gradle.codeartifact
 
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
+import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpointOrNull
 import java.net.URI
 import javax.inject.Inject
 import net.pearx.kasechange.toPascalCase
@@ -37,6 +38,10 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
                 configureCodeArtifactRepository(this, providers)
             }
 
+            pluginManagement.repositories.all {
+                configureCodeArtifactRepository(this, providers)
+            }
+
             gradle.beforeProject {
                 plugins.withType<MavenPublishPlugin> {
                     configure<PublishingExtension> {
@@ -54,7 +59,7 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
             return
         }
 
-        val endpoint = repository.url.toCodeArtifactEndpoint()
+        val endpoint = repository.url.toCodeArtifactEndpointOrNull()
         when {
             endpoint == null -> return
             repository is DefaultMavenArtifactRepository -> {
@@ -89,14 +94,6 @@ public fun RepositoryHandler.awsCodeArtifact(
         block.execute(this)
     }
 }
-
-//public fun Project.isSnapshotVersion(): Boolean = version.toString().endsWith("SNAPSHOT")
-//
-//public fun MavenArtifactRepository.isSnapshotRepo(): Boolean = name.endsWith("Snapshot")
-//
-//public fun MavenArtifactRepository.isReleaseRepo(): Boolean = name.endsWith("Release")
-//
-//public fun MavenArtifactRepository.isLocalRepo(): Boolean = name.endsWith("Local")
 
 internal abstract class RepositoryCredentials : PasswordCredentials {
 

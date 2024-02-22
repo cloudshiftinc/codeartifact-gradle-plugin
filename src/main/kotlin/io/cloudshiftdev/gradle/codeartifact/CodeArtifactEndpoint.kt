@@ -32,7 +32,7 @@ internal data class CodeArtifactEndpoint(
             )
         }
 
-        fun URI.toCodeArtifactEndpoint(): CodeArtifactEndpoint? = fromUrl(this)
+        fun URI.toCodeArtifactEndpointOrNull(): CodeArtifactEndpoint? = fromUrl(this)
 
         fun String.toCodeArtifactEndpoint(): CodeArtifactEndpoint =
             toCodeArtifactEndpointOrNull() ?: error("Invalid CodeArtifact endpoint: $this")
