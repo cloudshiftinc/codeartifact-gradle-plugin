@@ -1,4 +1,6 @@
 
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -80,3 +82,43 @@ tasks {
         }
     }
 }
+
+
+testing {
+    suites {
+        val test by getting(JvmTestSuite::class) {
+            useJUnitJupiter()
+            dependencies {
+                implementation(platform(libs.kotest.bom))
+                implementation(libs.kotest.assertions.core)
+                implementation(libs.kotest.assertions.json)
+                implementation(libs.kotest.framework.datatest)
+                implementation(libs.kotest.property)
+                implementation(libs.kotest.runner.junit5)
+                implementation("io.mockk:mockk:1.13.10")
+            }
+            targets {
+                all {
+                    testTask.configure {
+                        outputs.upToDateWhen { false }
+                        testLogging {
+                            events =
+                                setOf(
+                                    TestLogEvent.FAILED,
+                                    TestLogEvent.PASSED,
+                                    TestLogEvent.SKIPPED,
+                                    TestLogEvent.STANDARD_OUT,
+                                    TestLogEvent.STANDARD_ERROR
+                                )
+                            exceptionFormat = TestExceptionFormat.FULL
+                            showExceptions = true
+                            showCauses = true
+                            showStackTraces = true
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

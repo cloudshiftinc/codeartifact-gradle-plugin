@@ -78,8 +78,14 @@ variable; setting either of these to a role ARN will cause the plugin to assume 
 resolved by any of the other mechanisms described above.  When a role is assumed it uses an in-line scoped-down policy to
 limit role permissions to those required for CodeArtifact.
 
+## Advanced use
+
+### As a Gradle plugin / custom Gradle distribution
+
+This plugin supports being applied as a Gradle plugin as part of a custom Gradle distribution; it will then be able to provide secured CodeArtifact repositories for custom plugin resolution.
+
 ## Compatibility
 
 This plugin requires Gradle 8.6 or later running on Java 17 or later and is compatible with the Gradle Configuration
-Cache.
+Cache.  Only the Gradle Kotlin DSL is supported.
 
