@@ -2,11 +2,9 @@ package io.cloudshiftdev.gradle.codeartifact
 
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpointOrNull
-import java.net.URI
 import javax.inject.Inject
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
-import net.pearx.kasechange.toPascalCase
 import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -126,10 +124,16 @@ public fun RepositoryHandler.awsCodeArtifact(
     url: String,
     block: Action<MavenArtifactRepository> = Action {}
 ) {
-    val endpoint = url.toCodeArtifactEndpoint()
+    awsCodeArtifact(url.toCodeArtifactEndpoint(), block)
+}
+
+public fun RepositoryHandler.awsCodeArtifact(
+    endpoint: CodeArtifactEndpoint,
+    block: Action<MavenArtifactRepository> = Action {}
+) {
     maven {
-        this.name = "${endpoint.domain}-${endpoint.repository}".toPascalCase()
-        this.url = URI(url)
+        this.name = endpoint.name
+        this.url = endpoint.url
         block.execute(this)
     }
 }
