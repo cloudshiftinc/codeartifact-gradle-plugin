@@ -25,7 +25,6 @@ import org.gradle.api.logging.Logging
 internal object CodeArtifactOperations {
     private val logger = Logging.getLogger(CodeArtifactOperations::class.java)
 
-
     internal fun getAuthorizationToken(endpoint: CodeArtifactEndpoint): CodeArtifactToken {
         return codeArtifactClient(endpoint).use { codeArtifact ->
             runBlocking {
@@ -130,15 +129,15 @@ internal object CodeArtifactOperations {
                 StsAssumeRoleCredentialsProvider(
                     bootstrapCredentialsProvider = bootstrapProviders,
                     assumeRoleParameters =
-                    AssumeRoleParameters(
-                        roleArn = roleArn,
-                        roleSessionName = "codeartifact-client",
+                        AssumeRoleParameters(
+                            roleArn = roleArn,
+                            roleSessionName = "codeartifact-client",
 
-                        // scope down the policy so this client can *only* do CodeArtifact
-                        // actions, regardless of
-                        // what the underlying policy allows
-                        policy =
-                        """
+                            // scope down the policy so this client can *only* do CodeArtifact
+                            // actions, regardless of
+                            // what the underlying policy allows
+                            policy =
+                                """
                         {
                           "Version": "2012-10-17",
                           "Statement": [
@@ -155,8 +154,8 @@ internal object CodeArtifactOperations {
                           ]
                         }
                     """
-                            .trimIndent(),
-                    ),
+                                    .trimIndent(),
+                        ),
                 )
             } ?: bootstrapProviders
 

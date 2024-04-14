@@ -4,6 +4,8 @@ import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCod
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpointOrNull
 import java.net.URI
 import javax.inject.Inject
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 import net.pearx.kasechange.toPascalCase
 import org.gradle.api.Action
 import org.gradle.api.Plugin
@@ -41,18 +43,15 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
             is Project -> applyToProject(target)
             is Settings -> applyToSettings(target)
             is Gradle -> applyToGradle(target)
-            else -> error("CodeArtifactPlugin is not compatible with ${target.javaClass.simpleName}")
+            else ->
+                error("CodeArtifactPlugin is not compatible with ${target.javaClass.simpleName}")
         }
     }
 
     private fun applyToGradle(gradle: Gradle) {
         gradle.beforeSettings {
-            buildscript.repositories.all {
-                configureCodeArtifactRepository(this, providers)
-            }
-            pluginManagement.repositories.all {
-                configureCodeArtifactRepository(this, providers)
-            }
+            buildscript.repositories.all { configureCodeArtifactRepository(this, providers) }
+            pluginManagement.repositories.all { configureCodeArtifactRepository(this, providers) }
             pluginManager.apply(CodeArtifactPlugin::class)
         }
     }
@@ -67,17 +66,13 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
         }
 
         settings.gradle.beforeProject {
-            buildscript.repositories.all {
-                configureCodeArtifactRepository(this, providers)
-            }
+            buildscript.repositories.all { configureCodeArtifactRepository(this, providers) }
             pluginManager.apply(CodeArtifactPlugin::class)
         }
     }
 
     private fun applyToProject(project: Project) {
-        project.repositories.all {
-            configureCodeArtifactRepository(this, project.providers)
-        }
+        project.repositories.all { configureCodeArtifactRepository(this, project.providers) }
 
         project.plugins.withType<MavenPublishPlugin> {
             project.configure<PublishingExtension> {
@@ -90,22 +85,30 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
         repository: ArtifactRepository,
         providers: ProviderFactory,
     ) {
-        if (repository !is MavenArtifactRepository) {
-            return
-        }
+        if (!shouldConfigureCodeArtifactRepository(repository)) return
+
+        val endpoint = repository.url.toCodeArtifactEndpoint()
+        logger.info("Configuring for CodeArtifact repository @ $endpoint")
+
+        val tokenProvider =
+            providers.of(CodeArtifactTokenValueSource::class) {
+                parameters { this.endpoint = endpoint }
+            }
+        repository.setConfiguredCredentials(createRepoCredentials(tokenProvider))
+    }
+
+    @OptIn(ExperimentalContracts::class)
+    private fun shouldConfigureCodeArtifactRepository(repository: ArtifactRepository): Boolean {
+        contract { returns(true) implies (repository is DefaultMavenArtifactRepository) }
+        if (repository !is DefaultMavenArtifactRepository) return false
+
+        val domainRegex = resolveSystemVar("codeartifact.domains")?.toRegex() ?: Regex(".*")
 
         val endpoint = repository.url.toCodeArtifactEndpointOrNull()
-        when {
-            endpoint == null -> return
-            repository is DefaultMavenArtifactRepository -> {
-                val tokenProvider =
-                    providers.of(CodeArtifactTokenValueSource::class) {
-                        parameters { this.endpoint = endpoint }
-                    }
-                repository.setConfiguredCredentials(createRepoCredentials(tokenProvider))
-            }
-
-            else -> {}
+        return when {
+            endpoint == null -> false
+            domainRegex.matches(endpoint.domain) -> true
+            else -> false
         }
     }
 
@@ -137,13 +140,11 @@ internal abstract class RepositoryCredentials : PasswordCredentials {
 
     @get:Internal abstract val passwordProp: Property<String>
 
-    @Input
-    override fun getUsername(): String = usernameProp.get()
+    @Input override fun getUsername(): String = usernameProp.get()
 
     override fun setUsername(name: String?) = usernameProp.set(name)
 
-    @Internal
-    override fun getPassword(): String = passwordProp.get()
+    @Internal override fun getPassword(): String = passwordProp.get()
 
     override fun setPassword(pwd: String?) = passwordProp.set(pwd)
 }

@@ -78,6 +78,12 @@ variable; setting either of these to a role ARN will cause the plugin to assume 
 resolved by any of the other mechanisms described above.  When a role is assumed it uses an in-line scoped-down policy to
 limit role permissions to those required for CodeArtifact.
 
+## Other configuration properties
+
+| System Property      | Environment Variable | Description                                                              |
+|----------------------|----------------------|--------------------------------------------------------------------------|
+| codeartifact.domains | CODEARTIFACT_DOMAINS | Regex of domains to provide authentication for (defaults to all domains) |
+
 ## Advanced use
 
 ### As a Gradle plugin / custom Gradle distribution
