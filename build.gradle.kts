@@ -7,7 +7,7 @@ plugins {
     `kotlin-dsl`
     signing
     id("com.gradle.plugin-publish") version "1.2.1"
-    id("com.ncorti.ktfmt.gradle") version "0.17.0"
+    id("com.ncorti.ktfmt.gradle") version "0.18.0"
 }
 
 dependencies {
