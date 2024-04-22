@@ -40,8 +40,9 @@ public interface CodeArtifactEndpoint {
 
         public fun String.toCodeArtifactEndpointOrNull(): CodeArtifactEndpoint? = fromUrl(this)
 
+        // https://env-production-123456789012.d.codeartifact.eu-west-1.amazonaws.com/maven/env-data/com/abcd/xyz-sdk/1.22.3/xyz-sdk-1.22.3.pom
         private val regex =
-            """^https://(?<domain>.*?)-(?<domainOwner>.*?).d.codeartifact.(?<region>.+?).amazonaws.com/.+?/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
+            """^https://(?<domain>.*?)-(?<domainOwner>[0-9].*?).d.codeartifact.(?<region>.+?).amazonaws.com/.+?/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
                 .toRegex()
     }
 }
