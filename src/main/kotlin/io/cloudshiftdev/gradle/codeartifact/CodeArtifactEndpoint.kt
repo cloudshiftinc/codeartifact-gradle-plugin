@@ -1,9 +1,12 @@
 package io.cloudshiftdev.gradle.codeartifact
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import java.io.Serializable
 import java.net.URI
 import net.pearx.kasechange.toPascalCase
 
+@JsonDeserialize(`as` = CodeArtifactEndpointImpl::class)
 public interface CodeArtifactEndpoint {
     public val domain: String
     public val domainOwner: String
@@ -56,4 +59,9 @@ internal data class CodeArtifactEndpointImpl(
     override val region: String,
     override val repository: String,
     override val url: URI
-) : Serializable, CodeArtifactEndpoint
+) : Serializable, CodeArtifactEndpoint {
+
+    @get:JsonIgnore
+    override val name: String
+        get() = super.name
+}
