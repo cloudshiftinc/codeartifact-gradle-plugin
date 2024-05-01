@@ -4,7 +4,7 @@ import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCod
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactOperations
 import io.cloudshiftdev.gradle.codeartifact.GenericPackage
 import org.gradle.api.DefaultTask
-import org.gradle.api.file.FileCollection
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
@@ -26,7 +26,7 @@ public abstract class PublishPackageVersion : DefaultTask() {
 
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
-    public abstract var artifacts: FileCollection
+    public abstract val artifacts: ConfigurableFileCollection
 
     @TaskAction
     public fun publish() {
