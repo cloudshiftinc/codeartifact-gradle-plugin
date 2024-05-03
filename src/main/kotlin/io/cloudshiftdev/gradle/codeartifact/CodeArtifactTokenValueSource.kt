@@ -21,11 +21,16 @@ internal abstract class CodeArtifactTokenValueSource :
 
     private fun tokenForEndpoint(endpoint: CodeArtifactEndpoint): String {
         logger.info("Looking in cache for CodeArtifact token for {}", endpoint.url)
-        return localCache
-            .load(endpoint) {
-                logger.lifecycle("Fetching CodeArtifact token for {}", endpoint.url)
-                CodeArtifactOperations.getAuthorizationToken(endpoint)
-            }
-            .value
+        try {
+            return localCache
+                .load(endpoint) {
+                    logger.lifecycle("Fetching CodeArtifact token for {}", endpoint.url)
+                    CodeArtifactOperations.getAuthorizationToken(endpoint)
+                }
+                .value
+        } catch (e: Exception) {
+            println("ERROR: failed to obtain CodeArtifact token for $endpoint: ${e.message}")
+            throw RuntimeException("Failed to obtain CodeArtifact token for $endpoint", e)
+        }
     }
 }
