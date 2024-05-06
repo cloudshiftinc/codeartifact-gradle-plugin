@@ -11,7 +11,7 @@ aws-sdk-kotlin-v1-codeartifact = { module = "aws.sdk.kotlin:codeartifact" }
 
 google-tink = { module = "com.google.crypto.tink:tink", version = "1.13.0" }
 
-jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.17.0" }
+jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.17.1" }
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind" }
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
