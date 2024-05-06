@@ -1,5 +1,6 @@
 package io.cloudshiftdev.gradle.codeartifact
 
+import org.gradle.api.GradleException
 import org.gradle.api.logging.Logging
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.ValueSource
@@ -29,8 +30,8 @@ internal abstract class CodeArtifactTokenValueSource :
                 }
                 .value
         } catch (e: Exception) {
-            println("ERROR: failed to obtain CodeArtifact token for $endpoint: ${e.message}")
-            throw RuntimeException("Failed to obtain CodeArtifact token for $endpoint", e)
+            println("ERROR: failed to obtain CodeArtifact token for $${endpoint.url}: ${e.message}")
+            throw GradleException("Failed to obtain CodeArtifact token for ${endpoint.url}: ${e.message}")
         }
     }
 }
