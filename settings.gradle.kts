@@ -19,11 +19,10 @@ plugins {
 }
 
 extensions.configure<org.ajoberstar.reckon.gradle.ReckonExtension> {
-    setDefaultInferredScope("minor")
+    setDefaultInferredScope("patch")
     snapshots()
     setScopeCalc(calcScopeFromProp())
     setStageCalc(calcStageFromProp())
-    setTagWriter { version -> "release/v$version" }
 }
 
 dependencyResolutionManagement {
