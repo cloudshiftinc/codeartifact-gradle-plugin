@@ -30,7 +30,7 @@ internal abstract class CodeArtifactTokenValueSource :
                 }
                 .value
         } catch (e: Exception) {
-            println("ERROR: failed to obtain CodeArtifact token for $${endpoint.url}: ${e.message}")
+            println("ERROR: failed to obtain CodeArtifact token for ${endpoint.url}: ${e.message}")
             throw GradleException("Failed to obtain CodeArtifact token for ${endpoint.url}: ${e.message}")
         }
     }
