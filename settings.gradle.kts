@@ -15,14 +15,6 @@ pluginManagement {
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
     id("com.gradle.develocity") version "3.17.2"
-    id("org.ajoberstar.reckon.settings") version "0.18.3"
-}
-
-extensions.configure<org.ajoberstar.reckon.gradle.ReckonExtension> {
-    setDefaultInferredScope("patch")
-    snapshots()
-    setScopeCalc(calcScopeFromProp())
-    setStageCalc(calcStageFromProp())
 }
 
 dependencyResolutionManagement {

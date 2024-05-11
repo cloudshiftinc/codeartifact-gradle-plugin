@@ -50,8 +50,8 @@ public interface CodeArtifactEndpoint {
     }
 }
 
-internal val CodeArtifactEndpoint.cacheKey: String
-    get() = url.toString()
+internal val CodeArtifactEndpoint.cacheKey
+    get() = "${domain}-${domainOwner}-${region}"
 
 internal data class CodeArtifactEndpointImpl(
     override val domain: String,
