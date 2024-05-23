@@ -25,7 +25,7 @@ internal abstract class CodeArtifactTokenValueSource :
         try {
             return localCache
                 .load(endpoint) {
-                    logger.lifecycle("Fetching CodeArtifact token for $${endpoint.cacheKey}")
+                    logger.lifecycle("Fetching CodeArtifact token for ${endpoint.cacheKey}")
                     CodeArtifactOperations.getAuthorizationToken(endpoint)
                 }
                 .value
