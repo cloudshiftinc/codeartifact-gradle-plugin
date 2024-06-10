@@ -20,7 +20,7 @@ jackson-datatype-jsr310 = { module="com.fasterxml.jackson.datatype:jackson-datat
 pearx-kasechange = { module = "net.pearx.kasechange:kasechange", version = "1.4.1" }
 
 
-kotest-bom = { module = "io.kotest:kotest-bom", version = "5.8.1" }
+kotest-bom = { module = "io.kotest:kotest-bom", version = "5.9.1" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core" }
 kotest-assertions-json = { module = "io.kotest:kotest-assertions-json" }
 kotest-framework-datatest = { module = "io.kotest:kotest-framework-datatest" }
