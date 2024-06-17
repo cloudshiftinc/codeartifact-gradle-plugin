@@ -2,10 +2,41 @@ version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
+    commit-message:
+      prefix: "chore"
+    groups:
+      workflow-actions:
+        patterns:
+          - "*"
     schedule:
       interval: "weekly"
+      time: "06:00"
+      timezone: "Canada/Pacific"
+    reviewers:
+      - "cloudshiftchris"
 
   - package-ecosystem: "gradle"
     directory: "/"
+    commit-message:
+      prefix: "chore"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "org.springframework*"
+        update-types:
+          - "version-update:semver-minor"
+      - dependency-name: "org.jetbrains.kotlin*"
+        update-types:
+          - "version-update:semver-minor"
+    groups:
+      gradle-updates:
+        update-types:
+          - "patch"
+          - "minor"
     schedule:
       interval: "weekly"
+      time: "06:00"
+      timezone: "Canada/Pacific"
+    reviewers:
+      - "cloudshiftchris"

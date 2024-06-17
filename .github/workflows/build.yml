@@ -23,8 +23,23 @@ jobs:
           distribution: 'corretto'
 
       # https://github.com/gradle/actions/tree/main/setup-gradle
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+      - name: 'Set up Gradle'
+        uses: 'gradle/actions/setup-gradle@31ae3562f68c96d481c31bc1a8a55cc1be162f83' # v3.4.1
+        with:
+          gradle-version: 'wrapper'
+          gradle-home-cache-includes: |-
+            jdks
+            caches
+            notifications
+          gradle-home-cache-cleanup: 'true'
+          validate-wrappers: true
+
+        # https://github.com/gradle/actions/tree/main/dependency-submission
+      - name: "Generate and submit dependency graph"
+        uses: "gradle/actions/dependency-submission@31ae3562f68c96d481c31bc1a8a55cc1be162f83" # v3.4.1
+        env:
+          DEPENDENCY_GRAPH_EXCLUDE_PROJECTS: "^:(build-logic|buildSrc|.*[Tt]test.*)"
+          DEPENDENCY_GRAPH_EXCLUDE_CONFIGURATIONS: ".*[Tt]est.*Classpath"
 
       - name: Build
         run: ./gradlew build
