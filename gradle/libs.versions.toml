@@ -6,12 +6,12 @@
 
 [libraries]
 
-aws-sdk-kotlin-v1-bom = { module = "aws.sdk.kotlin:bom", version = "1.1.25" }
+aws-sdk-kotlin-v1-bom = { module = "aws.sdk.kotlin:bom", version = "1.2.34" }
 aws-sdk-kotlin-v1-codeartifact = { module = "aws.sdk.kotlin:codeartifact" }
 
 google-tink = { module = "com.google.crypto.tink:tink", version = "1.13.0" }
 
-jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.17.0" }
+jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.17.1" }
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind" }
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
@@ -20,7 +20,7 @@ jackson-datatype-jsr310 = { module="com.fasterxml.jackson.datatype:jackson-datat
 pearx-kasechange = { module = "net.pearx.kasechange:kasechange", version = "1.4.1" }
 
 
-kotest-bom = { module = "io.kotest:kotest-bom", version = "5.8.1" }
+kotest-bom = { module = "io.kotest:kotest-bom", version = "5.9.1" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core" }
 kotest-assertions-json = { module = "io.kotest:kotest-assertions-json" }
 kotest-framework-datatest = { module = "io.kotest:kotest-framework-datatest" }
