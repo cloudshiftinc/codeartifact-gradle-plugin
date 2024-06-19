@@ -98,15 +98,19 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
             }
         repository.setConfiguredCredentials(createRepoCredentials(tokenProvider))
 
-        if (useProxy) {
+        val proxyEnabled = resolveSystemVar("codeartifact.proxy.enabled")?.toBoolean() ?: true
+
+        if (useProxy && proxyEnabled) {
             val key =
                 "codeartifact.${endpoint.domain}-${endpoint.domainOwner}-${endpoint.region}.proxy.base-url"
             resolveSystemVar(key)?.let { proxyBaseUrl ->
-                val proxyUrl = URI("${proxyBaseUrl}/${endpoint.url.path}")
-                logger.lifecycle(
+                val proxyUrl = URI("${proxyBaseUrl}${endpoint.url.path}")
+                logger.info(
                     "Using proxy for CodeArtifact repository: $proxyUrl -> ${endpoint.url}"
                 )
                 repository.url = proxyUrl
+            } ?: run {
+                logger.info("No proxy configured for CodeArtifact repository: ${endpoint.url}")
             }
         }
     }
