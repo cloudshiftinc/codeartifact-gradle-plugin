@@ -80,10 +80,11 @@ limit role permissions to those required for CodeArtifact.
 
 ## Other configuration properties
 
-| System Property                                              | Environment Variable                                         | Description                                                              |
-|--------------------------------------------------------------|--------------------------------------------------------------|--------------------------------------------------------------------------|
-| codeartifact.domains                                         | CODEARTIFACT_DOMAINS                                         | Regex of domains to provide authentication for (defaults to all domains) |
-| codeartifact.<domain>-<domain owner>-<region>.proxy.base-url | CODEARTIFACT_<DOMAIN>_<DOMAIN_OWNER>_<REGION>_PROXY_BASE_URL | Proxy base URL to use                       |
+| System Property                                              | Environment Variable                                         | Description                                                                                 |
+|--------------------------------------------------------------|--------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| codeartifact.domains                                         | CODEARTIFACT_DOMAINS                                         | Regex of domains to provide authentication for (defaults to all domains)                    |
+| codeartifact.<domain>-<domain owner>-<region>.proxy.base-url | CODEARTIFACT_<DOMAIN>_<DOMAIN_OWNER>_<REGION>_PROXY_BASE_URL | Proxy base URL to use                                                                       |
+| codeartifact.proxy.enabled | CODEARTIFACT_PROXY_ENABLED | Enable proxying of CodeArtifact URLs (default: true), if proxy base URLs configured (above) |
 
 ## Reverse Proxy Configuration
 
