@@ -2,6 +2,7 @@ package io.cloudshiftdev.gradle.codeartifact
 
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpointOrNull
+import java.net.URI
 import javax.inject.Inject
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
@@ -74,7 +75,9 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
 
         project.plugins.withType<MavenPublishPlugin> {
             project.configure<PublishingExtension> {
-                repositories.all { configureCodeArtifactRepository(this, project.providers) }
+                repositories.all {
+                    configureCodeArtifactRepository(this, project.providers, useProxy = false)
+                }
             }
         }
     }
@@ -82,6 +85,7 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     private fun configureCodeArtifactRepository(
         repository: ArtifactRepository,
         providers: ProviderFactory,
+        useProxy: Boolean = true
     ) {
         if (!shouldConfigureCodeArtifactRepository(repository)) return
 
@@ -93,6 +97,18 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
                 parameters { this.endpoint = endpoint }
             }
         repository.setConfiguredCredentials(createRepoCredentials(tokenProvider))
+
+        if (useProxy) {
+            val key =
+                "codeartifact.${endpoint.domain}-${endpoint.domainOwner}-${endpoint.region}.proxy.base-url"
+            resolveSystemVar(key)?.let { proxyBaseUrl ->
+                val proxyUrl = URI("${proxyBaseUrl}/${endpoint.url.path}")
+                logger.lifecycle(
+                    "Using proxy for CodeArtifact repository: $proxyUrl -> ${endpoint.url}"
+                )
+                repository.url = proxyUrl
+            }
+        }
     }
 
     @OptIn(ExperimentalContracts::class)
