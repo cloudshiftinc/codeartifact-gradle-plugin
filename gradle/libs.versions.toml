@@ -6,7 +6,7 @@
 
 [libraries]
 
-aws-sdk-kotlin-v1-bom = { module = "aws.sdk.kotlin:bom", version = "1.2.38" }
+aws-sdk-kotlin-v1-bom = { module = "aws.sdk.kotlin:bom", version = "1.2.43" }
 aws-sdk-kotlin-v1-codeartifact = { module = "aws.sdk.kotlin:codeartifact" }
 
 google-tink = { module = "com.google.crypto.tink:tink", version = "1.13.0" }
