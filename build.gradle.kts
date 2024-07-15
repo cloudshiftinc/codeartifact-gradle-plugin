@@ -95,7 +95,7 @@ testing {
                 implementation(libs.kotest.framework.datatest)
                 implementation(libs.kotest.property)
                 implementation(libs.kotest.runner.junit5)
-                implementation("io.mockk:mockk:1.13.11")
+                implementation("io.mockk:mockk:1.13.12")
             }
             targets {
                 all {
