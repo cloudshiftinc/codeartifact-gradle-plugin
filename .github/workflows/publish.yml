@@ -23,7 +23,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: 17
-          distribution: 'trmurin'
+          distribution: 'temurin'
 
       # https://github.com/gradle/actions/tree/main/setup-gradle
       - name: Setup Gradle
