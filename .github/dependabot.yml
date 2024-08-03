@@ -23,9 +23,6 @@ updates:
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
-      - dependency-name: "org.springframework*"
-        update-types:
-          - "version-update:semver-minor"
       - dependency-name: "org.jetbrains.kotlin*"
         update-types:
           - "version-update:semver-minor"
