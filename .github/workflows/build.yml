@@ -21,7 +21,7 @@ jobs:
 
       # https://github.com/gradle/actions/tree/main/setup-gradle
       - name: 'Set up Gradle'
-        uses: 'gradle/actions/setup-gradle@31ae3562f68c96d481c31bc1a8a55cc1be162f83' # v3.4.1
+        uses: 'gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582' # v4
         with:
           gradle-version: 'wrapper'
           gradle-home-cache-cleanup: 'true'
@@ -29,7 +29,7 @@ jobs:
 
         # https://github.com/gradle/actions/tree/main/dependency-submission
       - name: "Generate and submit dependency graph"
-        uses: "gradle/actions/dependency-submission@31ae3562f68c96d481c31bc1a8a55cc1be162f83" # v3.4.1
+        uses: "gradle/actions/dependency-submission@af1da67850ed9a4cedd57bfd976089dd991e2582" # v4
         env:
           DEPENDENCY_GRAPH_EXCLUDE_PROJECTS: "^:(build-logic|buildSrc|.*[Tt]test.*)"
           DEPENDENCY_GRAPH_EXCLUDE_CONFIGURATIONS: ".*[Tt]est.*Classpath"
