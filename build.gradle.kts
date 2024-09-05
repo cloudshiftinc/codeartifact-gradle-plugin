@@ -6,8 +6,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     `kotlin-dsl`
     signing
-    id("com.gradle.plugin-publish") version "1.2.1"
-    id("com.ncorti.ktfmt.gradle") version "0.20.0"
+    id("com.gradle.plugin-publish") version "1.2.2"
+    id("com.ncorti.ktfmt.gradle") version "0.20.1"
 }
 
 dependencies {
