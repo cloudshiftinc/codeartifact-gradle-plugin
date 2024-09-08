@@ -22,10 +22,6 @@ jobs:
       # https://github.com/gradle/actions/tree/main/setup-gradle
       - name: 'Set up Gradle'
         uses: 'gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582' # v4
-        with:
-          gradle-version: 'wrapper'
-          gradle-home-cache-cleanup: 'true'
-          validate-wrappers: true
 
         # https://github.com/gradle/actions/tree/main/dependency-submission
       - name: "Generate and submit dependency graph"
