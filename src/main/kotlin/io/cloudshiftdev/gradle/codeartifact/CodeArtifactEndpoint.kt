@@ -29,7 +29,7 @@ public interface CodeArtifactEndpoint {
                 match.groups["domainOwner"]!!.value,
                 match.groups["region"]!!.value,
                 match.groups["repository"]!!.value,
-                URI(urlString)
+                URI(urlString),
             )
         }
 
@@ -58,7 +58,7 @@ internal data class CodeArtifactEndpointImpl(
     override val domainOwner: String,
     override val region: String,
     override val repository: String,
-    override val url: URI
+    override val url: URI,
 ) : Serializable, CodeArtifactEndpoint {
 
     @get:JsonIgnore

@@ -37,7 +37,7 @@ internal class LocalCache {
 
     fun load(
         endpoint: CodeArtifactEndpoint,
-        tokenSupplier: () -> CodeArtifactToken
+        tokenSupplier: () -> CodeArtifactToken,
     ): CodeArtifactToken {
         val cacheFile = cacheFile(endpoint)
 

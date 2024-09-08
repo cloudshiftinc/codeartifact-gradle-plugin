@@ -11,7 +11,7 @@ internal class GenericPackage(
     val name: String,
     val namespace: String,
     val version: String,
-    val assets: List<Asset>
+    val assets: List<Asset>,
 ) {
 
     // https://docs.aws.amazon.com/codeartifact/latest/APIReference/API_PublishPackageVersion.html

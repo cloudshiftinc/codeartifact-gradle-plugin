@@ -83,14 +83,6 @@ limit role permissions to those required for CodeArtifact.
 | System Property                                              | Environment Variable                                         | Description                                                                                 |
 |--------------------------------------------------------------|--------------------------------------------------------------|---------------------------------------------------------------------------------------------|
 | codeartifact.domains                                         | CODEARTIFACT_DOMAINS                                         | Regex of domains to provide authentication for (defaults to all domains)                    |
-| codeartifact.<domain>-<domain owner>-<region>.proxy.base-url | CODEARTIFACT_<DOMAIN>_<DOMAIN_OWNER>_<REGION>_PROXY_BASE_URL | Proxy base URL to use                                                                       |
-| codeartifact.proxy.enabled | CODEARTIFACT_PROXY_ENABLED | Enable proxying of CodeArtifact URLs (default: true), if proxy base URLs configured (above) |
-
-## Reverse Proxy Configuration
-
-If you wish to place CodeArtifact behind a reverse proxy (for example, CloudFront or other CDN) you can specify the proxy to use (see table above).  The configured CodeArtifact URLs are used to generate a CodeArtifact token, and are then reconfigured to use the proxy URL (continuing to pass along the authentication token).  Your configured proxy is responsible for handling authentication/caching as appropriate.
-
-Repositories configured for publishing are not configured to use the proxy.
 
 ## Advanced use
 

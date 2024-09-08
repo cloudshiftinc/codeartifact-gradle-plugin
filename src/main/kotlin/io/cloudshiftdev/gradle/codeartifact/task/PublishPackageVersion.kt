@@ -40,7 +40,7 @@ public abstract class PublishPackageVersion : DefaultTask() {
 
         CodeArtifactOperations.publishPackageVersion(
             genericPackage,
-            repositoryUrl.get().toCodeArtifactEndpoint()
+            repositoryUrl.get().toCodeArtifactEndpoint(),
         )
     }
 }

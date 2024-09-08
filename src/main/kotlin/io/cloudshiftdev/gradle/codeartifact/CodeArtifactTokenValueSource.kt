@@ -32,7 +32,7 @@ internal abstract class CodeArtifactTokenValueSource :
         } catch (e: Exception) {
             val rootCause = e.rootCause
             println(
-                "ERROR: failed to obtain CodeArtifact token for ${endpoint.cacheKey}: ${rootCause.message}",
+                "ERROR: failed to obtain CodeArtifact token for ${endpoint.cacheKey}: ${rootCause.message}"
             )
             throw GradleException(
                 "Failed to obtain CodeArtifact token for ${endpoint.cacheKey}: ${rootCause.message}",

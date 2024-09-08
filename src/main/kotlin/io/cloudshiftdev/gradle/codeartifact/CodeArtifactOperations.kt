@@ -47,7 +47,7 @@ internal object CodeArtifactOperations {
 
     internal fun publishPackageVersion(
         genericPackage: GenericPackage,
-        endpoint: CodeArtifactEndpoint
+        endpoint: CodeArtifactEndpoint,
     ) {
         codeArtifactClient(endpoint).use { codeArtifact ->
             genericPackage.assets.forEachIndexed { idx: Int, asset ->
@@ -67,17 +67,15 @@ internal object CodeArtifactOperations {
         endpoint: CodeArtifactEndpoint,
         genericPackage: GenericPackage,
         asset: GenericPackage.Asset,
-        finished: Boolean
+        finished: Boolean,
     ) {
         runBlocking {
             val (sha256, sha256Time) = measureTimedValue { asset.sha256() }
-            logger.lifecycle(
-                "Calculated SHA256 for asset '${asset.name}' in $sha256Time; $sha256",
-            )
+            logger.lifecycle("Calculated SHA256 for asset '${asset.name}' in $sha256Time; $sha256")
 
             val timeTaken = measureTime {
                 logger.lifecycle(
-                    "Uploading CodeArtifact generic artifact asset '${asset.name}' (${genericPackage.namespace}/${genericPackage.name}/${genericPackage.version}) (size: ${asset.content.length()} to ${endpoint.url}",
+                    "Uploading CodeArtifact generic artifact asset '${asset.name}' (${genericPackage.namespace}/${genericPackage.name}/${genericPackage.version}) (size: ${asset.content.length()} to ${endpoint.url}"
                 )
                 // workaround for https://github.com/awslabs/aws-sdk-kotlin/issues/1217
                 codeArtifact.publishPackageVersion {
@@ -166,7 +164,7 @@ internal object CodeArtifactOperations {
         private fun requireEnv(variable: String): String =
             resolveSystemVar(variable)
                 ?: throw ProviderConfigurationException(
-                    "Missing value for environment variable `$variable`",
+                    "Missing value for environment variable `$variable`"
                 )
 
         override suspend fun resolve(attributes: Attributes): Credentials {
