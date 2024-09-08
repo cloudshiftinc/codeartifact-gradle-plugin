@@ -26,6 +26,13 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+        # https://github.com/gradle/actions/tree/main/dependency-submission
+      - name: "Generate and submit dependency graph"
+        uses: "gradle/actions/dependency-submission@af1da67850ed9a4cedd57bfd976089dd991e2582" # v4
+        env:
+          DEPENDENCY_GRAPH_EXCLUDE_PROJECTS: "^:(build-logic|buildSrc|.*[Tt]test.*)"
+          DEPENDENCY_GRAPH_EXCLUDE_CONFIGURATIONS: ".*[Tt]est.*Classpath"
+
       - name: Publish
         env:
           GRADLE_PUBLISH_KEY: '${{ secrets.PLUGIN_PORTAL_KEY }}'
