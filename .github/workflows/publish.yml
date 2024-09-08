@@ -6,6 +6,9 @@ on:
     paths-ignore:
       - 'README.md'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: build
