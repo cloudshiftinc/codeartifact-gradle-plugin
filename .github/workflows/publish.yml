@@ -27,11 +27,11 @@ jobs:
 
       # https://github.com/gradle/actions/tree/main/setup-gradle
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v4.1.0
 
         # https://github.com/gradle/actions/tree/main/dependency-submission
       - name: "Generate and submit dependency graph"
-        uses: "gradle/actions/dependency-submission@af1da67850ed9a4cedd57bfd976089dd991e2582" # v4
+        uses: "gradle/actions/dependency-submission@d156388eb19639ec20ade50009f3d199ce1e2808" # v4
         env:
           DEPENDENCY_GRAPH_EXCLUDE_PROJECTS: "^:(build-logic|buildSrc|.*[Tt]test.*)"
           DEPENDENCY_GRAPH_EXCLUDE_CONFIGURATIONS: ".*[Tt]est.*Classpath"
