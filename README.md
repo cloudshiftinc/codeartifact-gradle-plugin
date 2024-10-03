@@ -18,6 +18,7 @@ requests to AWS.
     ```
 2. Specify CodeArtifact repositories as required:
 
+
    In `settings.gradle.kts`:
     ```kotlin
     dependencyResolutionManagement {
