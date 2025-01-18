@@ -3,6 +3,10 @@ package io.cloudshiftdev.gradle.codeartifact
 import java.net.URI
 import java.security.MessageDigest
 import net.pearx.kasechange.toScreamingSnakeCase
+import org.gradle.api.provider.Provider
+import org.gradle.api.provider.ProviderFactory
+import org.gradle.kotlin.dsl.assign
+import org.gradle.kotlin.dsl.of
 
 internal fun URI.queryParameters() =
     query?.split("&")?.associate {
@@ -17,4 +21,8 @@ internal fun resolveSystemVar(key: String): String? =
 @OptIn(ExperimentalStdlibApi::class)
 internal fun String.sha256(): String {
     return MessageDigest.getInstance("SHA-256").digest(encodeToByteArray()).toHexString()
+}
+
+public fun ProviderFactory.codeArtifactToken(endpoint: CodeArtifactEndpoint): Provider<String> {
+    return of(CodeArtifactTokenValueSource::class) { parameters { this.endpoint = endpoint } }
 }

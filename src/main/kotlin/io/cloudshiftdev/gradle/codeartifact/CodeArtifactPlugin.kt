@@ -26,10 +26,8 @@ import org.gradle.api.publish.maven.plugins.MavenPublishPlugin
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 import org.gradle.kotlin.dsl.apply
-import org.gradle.kotlin.dsl.assign
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.newInstance
-import org.gradle.kotlin.dsl.of
 import org.gradle.kotlin.dsl.withType
 
 public abstract class CodeArtifactPlugin @Inject constructor(private val objects: ObjectFactory) :
@@ -86,12 +84,9 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
         if (!shouldConfigureCodeArtifactRepository(repository)) return
 
         val endpoint = repository.url.toCodeArtifactEndpoint()
-        logger.info("Configuring CodeArtifact repository @ ${endpoint.url}")
+        logger.info("Configuring CodeArtifact repository authentication: ${endpoint.url}")
 
-        val tokenProvider =
-            providers.of(CodeArtifactTokenValueSource::class) {
-                parameters { this.endpoint = endpoint }
-            }
+        val tokenProvider = providers.codeArtifactToken(endpoint)
         repository.setConfiguredCredentials(createRepoCredentials(tokenProvider))
     }
 
