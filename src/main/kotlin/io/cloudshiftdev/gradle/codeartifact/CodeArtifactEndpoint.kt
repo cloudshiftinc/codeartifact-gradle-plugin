@@ -12,6 +12,7 @@ public interface CodeArtifactEndpoint {
     public val domainOwner: String
     public val region: String
     public val repository: String
+    public val type: String
     public val url: URI
     public val name: String
         get() = "${domain}-${repository}".toPascalCase()
@@ -25,11 +26,12 @@ public interface CodeArtifactEndpoint {
             val urlString = url.toString()
             val match = regex.matchEntire(urlString) ?: return null
             return CodeArtifactEndpointImpl(
-                match.groups["domain"]!!.value,
-                match.groups["domainOwner"]!!.value,
-                match.groups["region"]!!.value,
-                match.groups["repository"]!!.value,
-                URI(urlString),
+                domain = match.groups["domain"]!!.value,
+                domainOwner = match.groups["domainOwner"]!!.value,
+                region = match.groups["region"]!!.value,
+                repository = match.groups["repository"]!!.value,
+                type = match.groups["type"]!!.value,
+                url = URI(urlString),
             )
         }
 
@@ -45,7 +47,7 @@ public interface CodeArtifactEndpoint {
 
         // https://env-production-123456789012.d.codeartifact.eu-west-1.amazonaws.com/maven/env-data/com/abcd/xyz-sdk/1.22.3/xyz-sdk-1.22.3.pom
         private val regex =
-            """^https://(?<domain>.*?)-(?<domainOwner>[0-9].*?).d.codeartifact.(?<region>.+?).amazonaws.com/.+?/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
+            """^https://(?<domain>.*?)-(?<domainOwner>[0-9].*?).d.codeartifact.(?<region>.+?).amazonaws.com/(?<type>.+?)/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
                 .toRegex()
     }
 }
@@ -59,6 +61,7 @@ internal data class CodeArtifactEndpointImpl(
     override val region: String,
     override val repository: String,
     override val url: URI,
+    override val type: String,
 ) : Serializable, CodeArtifactEndpoint {
 
     @get:JsonIgnore

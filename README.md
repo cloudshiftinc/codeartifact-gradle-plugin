@@ -85,6 +85,12 @@ limit role permissions to those required for CodeArtifact.
 |--------------------------------------------------------------|--------------------------------------------------------------|---------------------------------------------------------------------------------------------|
 | codeartifact.domains                                         | CODEARTIFACT_DOMAINS                                         | Regex of domains to provide authentication for (defaults to all domains)                    |
 
+## Obtaining CodeArtifact tokens for other (non-Maven repository) uses
+
+If you wish to use CodeArtifact tokens elsehwere, for example configuring `.npmrc` for CodeArtifact npm repositories, you can obtain a token provider using `ProviderFactory.codeArtifactToken(endpoint)`.
+
+```shell
+
 ## Advanced use
 
 ### As a Gradle plugin / custom Gradle distribution
