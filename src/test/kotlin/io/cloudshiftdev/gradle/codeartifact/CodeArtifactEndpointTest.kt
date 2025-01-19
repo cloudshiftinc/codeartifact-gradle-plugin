@@ -42,7 +42,9 @@ class CodeArtifactEndpointTest : FunSpec() {
         }
 
         test("url parsing works") {
-            val endpoint = "https://my_domain-111122223333.d.codeartifact.us-west-2.amazonaws.com/npm/my_repo/".toCodeArtifactEndpoint()
+            val endpoint =
+                "https://my_domain-111122223333.d.codeartifact.us-west-2.amazonaws.com/npm/my_repo/"
+                    .toCodeArtifactEndpoint()
             endpoint.domain.shouldBe("my_domain")
             endpoint.domainOwner.shouldBe("111122223333")
             endpoint.region.shouldBe("us-west-2")

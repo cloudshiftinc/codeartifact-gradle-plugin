@@ -42,12 +42,11 @@ internal class LocalCache {
         val cacheFile = cacheFile(endpoint)
 
         try {
+            logger.debug("Reading cached CodeArtifact token with key {}", endpoint.cacheKey)
             val decryptedBytes = decrypt(cacheFile.readBytes(), endpoint.cacheKey)
             val token: CodeArtifactToken = mapper.readValue(decryptedBytes)
-            if (!token.expired) {
-                logger.debug("CodeArtifact token expired {}", token.expiration)
-                return token
-            }
+            if (!token.expired) return token
+            logger.debug("CodeArtifact token expired {}", token.expiration)
         } catch (thrown: Exception) {
             logger.debug(
                 "Failed to read cached CodeArtifact token {}: {}",
