@@ -52,8 +52,8 @@ internal class LocalCache(private val cacheDir: File) {
                 Duration.between(Instant.now(), token.expiration),
             )
         } catch (thrown: Exception) {
-            logger.debug(
-                "Failed to read cached CodeArtifact token {}: {}",
+            logger.info(
+                "Failed to read cached CodeArtifact token (removing from cache) {}: {}",
                 cacheFile,
                 thrown.message,
             )
