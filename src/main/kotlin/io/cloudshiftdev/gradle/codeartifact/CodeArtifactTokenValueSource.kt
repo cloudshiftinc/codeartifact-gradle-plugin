@@ -1,5 +1,6 @@
 package io.cloudshiftdev.gradle.codeartifact
 
+import java.io.File
 import org.gradle.api.GradleException
 import org.gradle.api.logging.Logging
 import org.gradle.api.provider.Property
@@ -10,7 +11,8 @@ internal abstract class CodeArtifactTokenValueSource :
     ValueSource<String, CodeArtifactTokenValueSource.Parameters> {
     private val logger = Logging.getLogger(CodeArtifactTokenValueSource::class.java)
 
-    private val localCache = LocalCache()
+    private val localCache =
+        LocalCache(File(System.getProperty("user.home")).resolve(".gradle/caches/codeartifact"))
 
     interface Parameters : ValueSourceParameters {
         val endpoint: Property<CodeArtifactEndpoint>
@@ -24,10 +26,7 @@ internal abstract class CodeArtifactTokenValueSource :
         logger.info("Looking in cache for CodeArtifact token for ${endpoint.cacheKey}")
         try {
             return localCache
-                .load(endpoint) {
-                    logger.lifecycle("Fetching CodeArtifact token for ${endpoint.cacheKey}")
-                    CodeArtifactOperations.getAuthorizationToken(endpoint)
-                }
+                .load(endpoint) { CodeArtifactOperations.getAuthorizationToken(endpoint) }
                 .value
         } catch (e: Exception) {
             val rootCause = e.rootCause

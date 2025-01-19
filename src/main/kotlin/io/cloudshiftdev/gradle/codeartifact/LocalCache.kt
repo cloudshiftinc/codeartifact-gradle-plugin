@@ -10,17 +10,16 @@ import com.google.crypto.tink.TinkJsonProtoKeysetFormat
 import com.google.crypto.tink.aead.AeadConfig
 import com.google.crypto.tink.aead.PredefinedAeadParameters
 import java.io.File
+import java.time.Duration
+import java.time.Instant
 import org.gradle.api.logging.Logging
 
-internal class LocalCache {
+internal class LocalCache(private val cacheDir: File) {
     private val logger = Logging.getLogger(LocalCache::class.java)
+    private val keysetFile = cacheDir.resolve("codeartifact.keyset.json")
 
     companion object {
         private val mapper = jacksonObjectMapper().registerModule(JavaTimeModule())
-
-        private val cacheDir =
-            File(System.getProperty("user.home")).resolve(".gradle/caches/codeartifact")
-        private val keysetFile = cacheDir.resolve("codeartifact.keyset.json")
 
         private val noAssociatedData = ByteArray(0)
 
@@ -46,7 +45,12 @@ internal class LocalCache {
             val decryptedBytes = decrypt(cacheFile.readBytes(), endpoint.cacheKey)
             val token: CodeArtifactToken = mapper.readValue(decryptedBytes)
             if (!token.expired) return token
-            logger.debug("CodeArtifact token expired {}", token.expiration)
+            logger.info(
+                "CodeArtifact token expired/stale. expiration: {}; now: {}; delta: {}",
+                token.expiration,
+                Instant.now(),
+                Duration.between(Instant.now(), token.expiration),
+            )
         } catch (thrown: Exception) {
             logger.debug(
                 "Failed to read cached CodeArtifact token {}: {}",
@@ -56,7 +60,13 @@ internal class LocalCache {
         }
 
         cacheFile.delete()
+        logger.lifecycle("Fetching CodeArtifact token for ${endpoint.cacheKey}")
         val token = tokenSupplier()
+        logger.info(
+            "Fetched CodeArtifact token for {}; expires in {}",
+            endpoint.cacheKey,
+            Duration.between(Instant.now(), token.expiration),
+        )
         store(token)
         return token
     }
@@ -64,10 +74,16 @@ internal class LocalCache {
     private fun store(token: CodeArtifactToken) {
         val cacheFile = cacheFile(token.endpoint)
 
-        logger.debug("Storing token for {} in cache {}", token.endpoint, cacheFile)
+        logger.debug(
+            "Storing CodeArtifact token for {} in cache {}; expiration: {}",
+            token.endpoint,
+            cacheFile,
+            token.expiration,
+        )
 
         cacheFile.parentFile.mkdirs()
         val tokenJson = mapper.writeValueAsString(token)
+        logger.debug("CodeArtifact token json: {}", tokenJson)
 
         encrypt(tokenJson, token.endpoint.cacheKey).let { cacheFile.writeBytes(it) }
     }
