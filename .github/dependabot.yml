@@ -26,6 +26,9 @@ updates:
       - dependency-name: "org.jetbrains.kotlin*"
         update-types:
           - "version-update:semver-minor"
+      - dependency-name: "aws.sdk.kotlin:*"
+        versions:
+          - "<1.4.0"
     groups:
       gradle-updates:
         update-types:
