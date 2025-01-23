@@ -106,8 +106,9 @@ internal object CodeArtifactOperations {
     private fun buildCredentialsProvider(
         queryParameters: Map<String, String>
     ): CredentialsProvider {
-        fun mask(value: String): String =
+        fun mask(value: String?): String? =
             when {
+                value == null -> null
                 value.length > 4 -> value.take(4) + "*".repeat(value.length - 4)
                 else -> value
             }
@@ -148,10 +149,10 @@ internal object CodeArtifactOperations {
 
         val bootstrapProviders = CredentialsProviderChain(providers)
         val stsRoleArnKey = "codeartifact.stsRoleArn"
-
+        val assumeRoleArn = resolveSystemVar(stsRoleArnKey)
+        logger.info("Assume role arn to get CodeArtifact token: {}", mask(assumeRoleArn))
         val provider =
-            resolveSystemVar(stsRoleArnKey)?.let { roleArn ->
-                logger.info("Assume role to get CodeArtifact token: {}", mask(roleArn))
+            assumeRoleArn?.let { roleArn ->
                 StsAssumeRoleCredentialsProvider(
                     bootstrapCredentialsProvider = bootstrapProviders,
                     assumeRoleParameters =
