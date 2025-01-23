@@ -106,11 +106,38 @@ internal object CodeArtifactOperations {
     private fun buildCredentialsProvider(
         queryParameters: Map<String, String>
     ): CredentialsProvider {
+        fun mask(value: String): String =
+            when {
+                value.length > 4 -> value.take(4) + "*".repeat(value.length - 4)
+                else -> value
+            }
+
+        val systemProperties =
+            System.getProperties()
+                .stringPropertyNames()
+                .filter {
+                    it.lowercase().contains("codeartifact") || it.lowercase().contains("aws")
+                }
+                .sorted()
+                .associate { it to mask(System.getProperty(it)) }
+        val envVars =
+            System.getenv()
+                .keys
+                .filter {
+                    it.lowercase().contains("codeartifact") || it.lowercase().contains("aws")
+                }
+                .sorted()
+                .associate { it to mask(System.getenv(it)) }
+
+        logger.info("CodeArtifact System properties: {}", systemProperties)
+        logger.info("CodeArtifact Environment variables: {}", envVars)
+
         val profileKey = "codeartifact.profile"
 
         val providers =
             listOfNotNull(
                 (queryParameters[profileKey] ?: resolveSystemVar(profileKey))?.let {
+                    logger.info("Using profile {} for CodeArtifact authentication", it)
                     ProfileCredentialsProvider(profileName = it)
                 },
                 CodeArtifactEnvironmentCredentialsProvider(),
@@ -124,6 +151,7 @@ internal object CodeArtifactOperations {
 
         val provider =
             resolveSystemVar(stsRoleArnKey)?.let { roleArn ->
+                logger.info("Assume role to get CodeArtifact token: {}", mask(roleArn))
                 StsAssumeRoleCredentialsProvider(
                     bootstrapCredentialsProvider = bootstrapProviders,
                     assumeRoleParameters =
