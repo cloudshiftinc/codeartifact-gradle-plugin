@@ -120,7 +120,7 @@ internal object CodeArtifactOperations {
                     it.lowercase().contains("codeartifact") || it.lowercase().contains("aws")
                 }
                 .sorted()
-                .associate { it to mask(System.getProperty(it)) }
+                .associateWith { mask(System.getProperty(it)) }
         val envVars =
             System.getenv()
                 .keys
@@ -128,10 +128,10 @@ internal object CodeArtifactOperations {
                     it.lowercase().contains("codeartifact") || it.lowercase().contains("aws")
                 }
                 .sorted()
-                .associate { it to mask(System.getenv(it)) }
+                .associateWith { mask(System.getenv(it)) }
 
-        logger.info("CodeArtifact System properties: {}", systemProperties)
-        logger.info("CodeArtifact Environment variables: {}", envVars)
+        logger.debug("CodeArtifact System properties: {}", systemProperties)
+        logger.debug("CodeArtifact Environment variables: {}", envVars)
 
         val profileKey = "codeartifact.profile"
 

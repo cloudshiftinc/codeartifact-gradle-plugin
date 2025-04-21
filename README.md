@@ -18,7 +18,6 @@ requests to AWS.
     ```
 2. Specify CodeArtifact repositories as required:
 
-
    In `settings.gradle.kts`:
     ```kotlin
     dependencyResolutionManagement {
@@ -95,11 +94,108 @@ If you wish to place CodeArtifact behind a reverse proxy (for example, CloudFron
 
 Repositories configured for publishing are not configured to use the proxy.
 
+## Setting up CloudFront with CodeArtifact
+
+CloudFront can be used as a content delivery network in front of CloudFront to optimize downloads for distributed teams.
+
+Here is an example of a CloudFront distribution configuration via AWS CDK:
+
+```typescript
+import {Construct} from 'constructs';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import {HttpVersion} from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+import {CodeArtifactResources} from "../certificate-stack";
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as targets from 'aws-cdk-lib/aws-route53-targets';
+import {Duration} from "aws-cdk-lib";
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as path from 'path';
+
+export interface CdnProps {
+    codeArtifactResources: CodeArtifactResources,
+    originDomainName: string,
+}
+
+/**
+ * Creates a CloudFront distribution and supporting resources in front of CodeArtifact.
+ * Handles authentication using the CodeArtifact token.
+ */
+export class Cdn extends Construct {
+    constructor(scope: Construct, id: string, props: CdnProps) {
+        super(scope, id);
+
+        const edgeFn = new cloudfront.experimental.EdgeFunction(this, 'ViewerAuthFn', {
+            runtime: lambda.Runtime.NODEJS_18_X,
+            handler: 'index.handler',
+            code: lambda.Code.fromAsset(path.join(__dirname, 'auth-lambda')),  // lambda/index.js
+            memorySize: 128,
+            timeout: Duration.seconds(5),
+        });
+
+        // CodeArtifact emits Cache-Control headers for resources that are cacheable (assets), but does not
+        // emit cache headers for those that aren't (metadata).
+        // set the default cache TTL to 0 (do not cache)
+        const cachingOnlyIfHeaderPresent = new cloudfront.CachePolicy(this, 'CachingIfHeaderPresent', {
+            cachePolicyName: 'CachingOnlyIfHeaderPresent',
+            comment: 'CachingOptimized defaulting to not caching if no Cache-Control header provided',
+
+            minTtl: Duration.seconds(0),
+            defaultTtl: Duration.seconds(0),
+            maxTtl: Duration.days(365),
+
+            cookieBehavior: cloudfront.CacheCookieBehavior.none(),
+            headerBehavior: cloudfront.CacheHeaderBehavior.none(),
+            queryStringBehavior: cloudfront.CacheQueryStringBehavior.none(),
+
+            enableAcceptEncodingBrotli: true,
+            enableAcceptEncodingGzip: true,
+        });
+
+        const cdn = new cloudfront.Distribution(this, 'Distribution', {
+            enableLogging: true,
+            defaultBehavior: {
+                origin: new origins.HttpOrigin(props.originDomainName, {
+                    protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+                    originPath: '/',
+                    originSslProtocols: [cloudfront.OriginSslPolicy.TLS_V1_2]
+                }),
+                originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+                cachePolicy: cachingOnlyIfHeaderPresent,
+                viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+                allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+                compress: true,
+                edgeLambdas: [{
+                    functionVersion: edgeFn.currentVersion,
+                    eventType: cloudfront.LambdaEdgeEventType.VIEWER_REQUEST,
+                    includeBody: false,
+                }],
+            },
+            domainNames: [props.codeArtifactResources.cdnDomainName],
+            certificate: props.codeArtifactResources.cdnCertificate,
+            httpVersion: HttpVersion.HTTP2_AND_3,
+            enableIpv6: true,
+            minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
+        });
+
+        new route53.ARecord(this, 'AliasRecordV4', {
+            zone: props.codeArtifactResources.zone,
+            recordName: props.codeArtifactResources.cdnDomainName,
+            target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(cdn)),
+        });
+
+        new route53.AaaaRecord(this, 'AliasRecordV6', {
+            zone: props.codeArtifactResources.zone,
+            recordName: props.codeArtifactResources.cdnDomainName,
+            target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(cdn)),
+        });
+    }
+}
+```
+
 ## Obtaining CodeArtifact tokens for other (non-Maven repository) uses
 
 If you wish to use CodeArtifact tokens elsehwere, for example configuring `.npmrc` for CodeArtifact npm repositories, you can obtain a token provider using `ProviderFactory.codeArtifactToken(endpoint)`.
-
-```shell
 
 ## Advanced use
 
