@@ -14,7 +14,11 @@ internal fun URI.queryParameters() =
         key to value
     } ?: emptyMap()
 
-internal fun resolveSystemVar(key: String): String? =
+internal fun resolveSystemVar(vararg keys: String): String? {
+    return keys.firstNotNullOfOrNull { resolveSystemVarInternal(it) }
+}
+
+internal fun resolveSystemVarInternal(key: String): String? =
     System.getProperty(key)?.takeIf(String::isNotBlank)
         ?: System.getenv(key.toScreamingSnakeCase())?.takeIf(String::isNotBlank)
 

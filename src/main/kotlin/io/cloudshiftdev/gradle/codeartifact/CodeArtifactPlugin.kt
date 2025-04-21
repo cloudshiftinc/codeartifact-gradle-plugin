@@ -2,6 +2,7 @@ package io.cloudshiftdev.gradle.codeartifact
 
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpointOrNull
+import java.net.URI
 import javax.inject.Inject
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
@@ -72,7 +73,9 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
 
         project.plugins.withType<MavenPublishPlugin> {
             project.configure<PublishingExtension> {
-                repositories.all { configureCodeArtifactRepository(this, project.providers) }
+                repositories.all {
+                    configureCodeArtifactRepository(this, project.providers, useProxy = false)
+                }
             }
         }
     }
@@ -80,6 +83,7 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     private fun configureCodeArtifactRepository(
         repository: ArtifactRepository,
         providers: ProviderFactory,
+        useProxy: Boolean = true,
     ) {
         if (!shouldConfigureCodeArtifactRepository(repository)) return
 
@@ -88,6 +92,25 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
 
         val tokenProvider = providers.codeArtifactToken(endpoint)
         repository.setConfiguredCredentials(createRepoCredentials(tokenProvider))
+
+        val proxyEnabled = resolveSystemVar("codeartifact.proxy.enabled")?.toBoolean() ?: true
+
+        if (useProxy && proxyEnabled) {
+            val key1 =
+                "codeartifact.${endpoint.domain}-${endpoint.domainOwner}-${endpoint.region}.proxy.base-url"
+            val key2 = "codeartifact.${endpoint.region}.proxy.base-url"
+            val key3 = "codeartifact.proxy.base-url"
+            resolveSystemVar(key1, key2, key3)?.let { proxyBaseUrl ->
+                val proxyUrl = URI("${proxyBaseUrl}/${endpoint.url.path}")
+                logger.lifecycle(
+                    "Using proxy for CodeArtifact repository: $proxyUrl -> ${endpoint.url}"
+                )
+                repository.url = proxyUrl
+            }
+                ?: run {
+                    logger.info("No proxy configured for CodeArtifact repository: ${endpoint.url}")
+                }
+        }
     }
 
     @OptIn(ExperimentalContracts::class)
