@@ -80,13 +80,13 @@ limit role permissions to those required for CodeArtifact.
 
 ## Other configuration properties
 
-| System Property                                             | Environment Variable                                         | Description                                                                                 |
-|-------------------------------------------------------------|--------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| codeartifact.domains                                        | CODEARTIFACT_DOMAINS                                         | Regex of domains to provide authentication for (defaults to all domains)                    |
- codeartifact.proxy.enabled | CODEARTIFACT_PROXY_ENABLED | Enable proxying of CodeArtifact URLs (default: true), if proxy base URLs configured (above) |
-| codeartifact.<domain>-<domain owner>-<region>.proxy.base-url | CODEARTIFACT_<DOMAIN>_<DOMAIN_OWNER>_<REGION>_PROXY_BASE_URL | Proxy base URL to use                       |
-| codeartifact.<region>.proxy.base-url | CODEARTIFACT_<REGION>_PROXY_BASE_URL                         | Proxy base URL to use                       |
-| codeartifact.proxy.base-url | CODEARTIFACT_PROXY_BASE_URL                                  | Proxy base URL to use                       |
+| System Property                                                       | Environment Variable                                                   | Description                                                                                 |
+|-----------------------------------------------------------------------|------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| codeartifact.domains                                                  | CODEARTIFACT_DOMAINS                                                   | Regex of domains to provide authentication for (defaults to all domains)                    |
+ codeartifact.proxy.enabled                                            | CODEARTIFACT_PROXY_ENABLED                                             | Enable proxying of CodeArtifact URLs (default: true), if proxy base URLs configured (above) |
+| codeartifact.&lt;domain>-&lt;domain owner>-&lt;region>.proxy.base-url | CODEARTIFACT_&lt;DOMAIN>_&lt;DOMAIN_OWNER>\_&lt;REGION>_PROXY_BASE_URL | Proxy base URL to use                       |
+| codeartifact.&lt;region>.proxy.base-url                               | CODEARTIFACT_&lt;REGION>_PROXY_BASE_URL                                | Proxy base URL to use                       |
+| codeartifact.proxy.base-url                                           | CODEARTIFACT_PROXY_BASE_URL                                            | Proxy base URL to use                       |
 
 ## Reverse Proxy Configuration
 
