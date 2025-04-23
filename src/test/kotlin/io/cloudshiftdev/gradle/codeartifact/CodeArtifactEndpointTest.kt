@@ -56,7 +56,9 @@ class CodeArtifactEndpointTest : FunSpec() {
             val endpoint =
                 "codeartifact://my_domain-111122223333.d.codeartifact.us-west-2.amazonaws.com/npm/my_repo/"
                     .toCodeArtifactEndpoint()
-            endpoint.isCodeArtifactProtocol.shouldBe(true)
+            endpoint.url.toString().shouldBe(
+                "https://my_domain-111122223333.d.codeartifact.us-west-2.amazonaws.com/npm/my_repo/",
+            )
         }
     }
 }

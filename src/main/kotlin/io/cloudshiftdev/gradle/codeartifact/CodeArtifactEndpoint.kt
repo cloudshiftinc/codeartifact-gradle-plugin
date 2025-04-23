@@ -23,7 +23,7 @@ public interface CodeArtifactEndpoint {
         }
 
         private fun fromUrl(url: URI): CodeArtifactEndpoint? {
-            val urlString = url.toString()
+            val urlString = url.toString().replace("codeartifact://", "https://")
             val match = regex.matchEntire(urlString) ?: return null
             return CodeArtifactEndpointImpl(
                 domain = match.groups["domain"]!!.value,
@@ -47,7 +47,7 @@ public interface CodeArtifactEndpoint {
 
         // https://env-production-123456789012.d.codeartifact.eu-west-1.amazonaws.com/maven/env-data/com/abcd/xyz-sdk/1.22.3/xyz-sdk-1.22.3.pom
         private val regex =
-            """^(?:https|codeartifact)://(?<domain>.*?)-(?<domainOwner>[0-9].*?).d.codeartifact.(?<region>.+?).amazonaws.com/(?<type>.+?)/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
+            """^https://(?<domain>.*?)-(?<domainOwner>[0-9].*?).d.codeartifact.(?<region>.+?).amazonaws.com/(?<type>.+?)/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
                 .toRegex()
     }
 }
@@ -62,14 +62,8 @@ internal fun CodeArtifactEndpoint.proxyUrl(): URI? {
     return resolveSystemVar(key1, key2, key3)?.let { proxyBaseUrl -> URI(proxyBaseUrl) }
 }
 
-internal val CodeArtifactEndpoint.isCodeArtifactProtocol: Boolean
-    get() = url.scheme == "codeartifact"
-
-internal fun URI.httpsProtocolUrl(): URI =
-    if (scheme == "https") this else URI(toString().replace("codeartifact://", "https://"))
-
-internal fun URI.codeArtifactProtocolUrl(): URI =
-    if (scheme == "codeartifact") this else URI(toString().replace("https://", "codeartifact://"))
+internal fun CodeArtifactEndpoint.toCodeArtifactProtocolUrl(): URI =
+    URI(toString().replace("https://", "codeartifact://"))
 
 internal val CodeArtifactEndpoint.cacheKey
     get() = "${domain}-${domainOwner}-${region}"

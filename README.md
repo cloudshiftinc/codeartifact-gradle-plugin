@@ -7,7 +7,7 @@ This plugin provides support for using AWS CodeArtifact Maven repositories as a 
 Fetching of CodeArtifact tokens is handled by this plugin, with tokens being securely cached to reduce the number of requests to AWS.
 
 > [!NOTE]
-> This plugin uses a modern HttpClient, enabling HTTP/2 support and compression (for compressible  content, such as POM files, where your artifact repository / CDN supports that).<br/>This offers a considerable performance improvement.
+> :rocket: This plugin uses a modern HttpClient, enabling HTTP/2 support and compression (for compressible  content, such as POM files, where your CDN supports that).<br/>This offers a considerable performance improvement. :rocket:
 
 ## Getting Started
 

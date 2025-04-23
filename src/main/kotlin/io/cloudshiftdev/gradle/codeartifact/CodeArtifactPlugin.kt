@@ -128,8 +128,6 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
                     .build()
 
             connectorFactories.add(CodeArtifactResourceConnectorFactory(httpClient))
-
-            println("Added CodeArtifactResourceConnectorFactory to the transport factory.")
         }
     }
 
@@ -166,17 +164,12 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
         }
 
         if (repositoryMode is RepositoryMode.Publish) {
-            // ensure that HTTPS url (not codeartifact:) is used for publishing
-            repository.url = endpoint.url.httpsProtocolUrl()
-
             configureCredentials()
             return
         }
 
         // force the use of codeartifact:// protocol for resolving
-        if (!endpoint.isCodeArtifactProtocol) {
-            repository.url = endpoint.url.codeArtifactProtocolUrl()
-        }
+        repository.url = endpoint.toCodeArtifactProtocolUrl()
 
         // now everything is a codeartifact:// url; our ResourceConnector handles that protocol,
         // using the OkHttpClient and injecting the CodeArtifact token.

@@ -2,7 +2,6 @@ package io.cloudshiftdev.gradle.codeartifact.resource
 
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpointOrNull
 import io.cloudshiftdev.gradle.codeartifact.acquireToken
-import io.cloudshiftdev.gradle.codeartifact.httpsProtocolUrl
 import io.cloudshiftdev.gradle.codeartifact.proxyUrl
 import java.io.InputStream
 import java.net.URI
@@ -111,8 +110,7 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
             location.uri.toCodeArtifactEndpointOrNull()
                 ?: error("Invalid CodeArtifact endpoint: ${location.uri}")
 
-        val rawUrl =
-            (endpoint.proxyUrl()?.resolve(location.uri.path) ?: location.uri).httpsProtocolUrl()
+        val rawUrl = endpoint.proxyUrl()?.resolve(location.uri.path) ?: location.uri
 
         val url = rawUrl.toHttpUrlOrNull() ?: error("Invalid URL: $rawUrl")
 
