@@ -68,6 +68,9 @@ internal val CodeArtifactEndpoint.isCodeArtifactProtocol: Boolean
 internal fun URI.httpsProtocolUrl(): URI =
     if (scheme == "https") this else URI(toString().replace("codeartifact://", "https://"))
 
+internal fun URI.codeArtifactProtocolUrl(): URI =
+    if (scheme == "codeartifact") this else URI(toString().replace("https://", "codeartifact://"))
+
 internal val CodeArtifactEndpoint.cacheKey
     get() = "${domain}-${domainOwner}-${region}"
 

@@ -3,7 +3,6 @@ package io.cloudshiftdev.gradle.codeartifact
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpointOrNull
 import io.cloudshiftdev.gradle.codeartifact.resource.CodeArtifactResourceConnectorFactory
-import java.net.URI
 import javax.inject.Inject
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -174,17 +173,13 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
             return
         }
 
-        // provide authentication for https scheme
+        // force the use of codeartifact:// protocol for resolving
         if (!endpoint.isCodeArtifactProtocol) {
-            configureCredentials()
+            repository.url = endpoint.url.codeArtifactProtocolUrl()
         }
 
-        val proxyUrl = endpoint.proxyUrl()
-        if (proxyUrl == null || proxyUrl.scheme == "codeartifact") return
-
-        logger.lifecycle("Using proxy for CodeArtifact repository: $proxyUrl -> ${endpoint.url}")
-
-        repository.url = URI("${proxyUrl}$/{repository.url.path}")
+        // now everything is a codeartifact:// url; our ResourceConnector handles that protocol,
+        // using the OkHttpClient and injecting the CodeArtifact token.
     }
 
     private fun createRepoCredentials(
