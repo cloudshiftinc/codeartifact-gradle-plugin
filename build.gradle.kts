@@ -2,6 +2,7 @@ import java.nio.charset.StandardCharsets
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -22,6 +23,9 @@ dependencies {
     implementation(libs.jackson.databind)
     implementation(libs.jackson.module.kotlin)
     implementation(libs.jackson.datatype.jsr310)
+
+    implementation("com.squareup.okhttp3:okhttp:5.0.0-alpha.14")
+    implementation("com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.14")
 
     implementation(libs.pearx.kasechange)
 }
@@ -96,9 +100,9 @@ tasks {
     }
 
     named<KotlinCompile>("compileKotlin") {
-        kotlinOptions {
-            apiVersion = "1.9"
-            languageVersion = "1.9"
+        compilerOptions {
+            apiVersion = KotlinVersion.KOTLIN_1_9
+            languageVersion = KotlinVersion.KOTLIN_1_9
         }
     }
 
