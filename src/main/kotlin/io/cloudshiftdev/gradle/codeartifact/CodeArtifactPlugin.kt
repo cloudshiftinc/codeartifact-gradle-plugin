@@ -2,10 +2,10 @@ package io.cloudshiftdev.gradle.codeartifact
 
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpointOrNull
-import java.net.URI
+import io.cloudshiftdev.gradle.codeartifact.resource.CodeArtifactResourceConnectorFactory
 import javax.inject.Inject
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.contract
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -15,6 +15,7 @@ import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.initialization.Settings
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
+import org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransportFactory
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.logging.Logging
 import org.gradle.api.model.ObjectFactory
@@ -26,9 +27,11 @@ import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.plugins.MavenPublishPlugin
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
+import org.gradle.internal.resource.connector.ResourceConnectorFactory
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.newInstance
+import org.gradle.kotlin.dsl.support.serviceOf
 import org.gradle.kotlin.dsl.withType
 
 public abstract class CodeArtifactPlugin @Inject constructor(private val objects: ObjectFactory) :
@@ -36,6 +39,7 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     private val logger = Logging.getLogger(CodeArtifactPlugin::class.java)
 
     override fun apply(target: PluginAware) {
+
         when (target) {
             is Project -> applyToProject(target)
             is Settings -> applyToSettings(target)
@@ -46,86 +50,129 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     }
 
     private fun applyToGradle(gradle: Gradle) {
+        val transportFactory = gradle.serviceOf<RepositoryTransportFactory>()
+        transportFactory.addCodeArtifactResourceConnectorFactory()
         gradle.beforeSettings {
-            buildscript.repositories.all { configureCodeArtifactRepository(this, providers) }
-            pluginManagement.repositories.all { configureCodeArtifactRepository(this, providers) }
+            buildscript.repositories.all {
+                configureCodeArtifactRepository(this, providers, RepositoryMode.Resolve)
+            }
+            pluginManagement.repositories.all {
+                configureCodeArtifactRepository(this, providers, RepositoryMode.Resolve)
+            }
             pluginManager.apply(CodeArtifactPlugin::class)
         }
     }
 
     private fun applyToSettings(settings: Settings) {
+        val transportFactory = settings.serviceOf<RepositoryTransportFactory>()
+        transportFactory.addCodeArtifactResourceConnectorFactory()
+
         settings.pluginManagement.repositories.all {
-            configureCodeArtifactRepository(this, settings.providers)
+            configureCodeArtifactRepository(this, settings.providers, RepositoryMode.Resolve)
         }
 
         settings.dependencyResolutionManagement.repositories.all {
-            configureCodeArtifactRepository(this, settings.providers)
+            configureCodeArtifactRepository(this, settings.providers, RepositoryMode.Resolve)
         }
 
         settings.gradle.beforeProject {
-            buildscript.repositories.all { configureCodeArtifactRepository(this, providers) }
+            buildscript.repositories.all {
+                configureCodeArtifactRepository(this, providers, RepositoryMode.Resolve)
+            }
             pluginManager.apply(CodeArtifactPlugin::class)
         }
     }
 
     private fun applyToProject(project: Project) {
-        project.repositories.all { configureCodeArtifactRepository(this, project.providers) }
+        val transportFactory = project.serviceOf<RepositoryTransportFactory>()
+        transportFactory.addCodeArtifactResourceConnectorFactory()
+
+        project.repositories.all {
+            configureCodeArtifactRepository(this, project.providers, RepositoryMode.Resolve)
+        }
 
         project.plugins.withType<MavenPublishPlugin> {
             project.configure<PublishingExtension> {
                 repositories.all {
-                    configureCodeArtifactRepository(this, project.providers, useProxy = false)
+                    configureCodeArtifactRepository(this, project.providers, RepositoryMode.Publish)
                 }
             }
         }
+    }
+
+    private fun RepositoryTransportFactory.addCodeArtifactResourceConnectorFactory() {
+        // Get the class of the transport factory
+        val factoryClass = this::class.java
+
+        // Find the registeredProtocols field
+        val registeredProtocolsField = factoryClass.getDeclaredField("registeredProtocols")
+
+        // Make the field accessible
+        registeredProtocolsField.isAccessible = true
+
+        // Get the current value of the field (assuming it's a MutableMap<String, Any>)
+        @Suppress("UNCHECKED_CAST")
+        val connectorFactories =
+            registeredProtocolsField.get(this) as ArrayList<ResourceConnectorFactory>
+
+        if (connectorFactories.none { it.supportedProtocols.contains("codeartifact") }) {
+            val loggingInterceptor = HttpLoggingInterceptor(OkHttpLogger())
+            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.HEADERS)
+            loggingInterceptor.redactHeader("Authorization")
+
+            val httpClient =
+                OkHttpClient.Builder()
+                    .followRedirects(true)
+                    .followSslRedirects(false)
+                    .addNetworkInterceptor(loggingInterceptor)
+                    .build()
+
+            connectorFactories.add(CodeArtifactResourceConnectorFactory(httpClient))
+        }
+    }
+
+    private class OkHttpLogger : HttpLoggingInterceptor.Logger {
+        private val logger = Logging.getLogger(OkHttpLogger::class.java)
+
+        override fun log(message: String) {
+            logger.debug(message)
+        }
+    }
+
+    private sealed class RepositoryMode {
+        data object Resolve : RepositoryMode()
+
+        data object Publish : RepositoryMode()
     }
 
     private fun configureCodeArtifactRepository(
         repository: ArtifactRepository,
         providers: ProviderFactory,
-        useProxy: Boolean = true,
+        repositoryMode: RepositoryMode,
     ) {
-        if (!shouldConfigureCodeArtifactRepository(repository)) return
-
-        val endpoint = repository.url.toCodeArtifactEndpoint()
-        logger.info("Configuring CodeArtifact repository authentication: ${endpoint.url}")
-
-        val tokenProvider = providers.codeArtifactToken(endpoint)
-        repository.setConfiguredCredentials(createRepoCredentials(tokenProvider))
-
-        val proxyEnabled = resolveSystemVar("codeartifact.proxy.enabled")?.toBoolean() ?: true
-
-        if (useProxy && proxyEnabled) {
-            val key1 =
-                "codeartifact.${endpoint.domain}-${endpoint.domainOwner}-${endpoint.region}.proxy.base-url"
-            val key2 = "codeartifact.${endpoint.region}.proxy.base-url"
-            val key3 = "codeartifact.proxy.base-url"
-            resolveSystemVar(key1, key2, key3)?.let { proxyBaseUrl ->
-                val proxyUrl = URI("${proxyBaseUrl}/${endpoint.url.path}")
-                logger.lifecycle(
-                    "Using proxy for CodeArtifact repository: $proxyUrl -> ${endpoint.url}"
-                )
-                repository.url = proxyUrl
-            }
-                ?: run {
-                    logger.info("No proxy configured for CodeArtifact repository: ${endpoint.url}")
-                }
-        }
-    }
-
-    @OptIn(ExperimentalContracts::class)
-    private fun shouldConfigureCodeArtifactRepository(repository: ArtifactRepository): Boolean {
-        contract { returns(true) implies (repository is DefaultMavenArtifactRepository) }
-        if (repository !is DefaultMavenArtifactRepository) return false
+        if (repository !is DefaultMavenArtifactRepository) return
+        val endpoint = repository.url.toCodeArtifactEndpointOrNull() ?: return
 
         val domainRegex = resolveSystemVar("codeartifact.domains")?.toRegex() ?: Regex(".*")
+        if (!domainRegex.matches(endpoint.domain)) return
 
-        val endpoint = repository.url.toCodeArtifactEndpointOrNull()
-        return when {
-            endpoint == null -> false
-            domainRegex.matches(endpoint.domain) -> true
-            else -> false
+        fun configureCredentials() {
+            logger.info("Configuring CodeArtifact repository authentication: ${endpoint.url}")
+
+            val tokenProvider = providers.codeArtifactToken(endpoint)
+            repository.setConfiguredCredentials(createRepoCredentials(tokenProvider))
         }
+
+        if (repositoryMode is RepositoryMode.Publish) {
+            configureCredentials()
+            return
+        }
+
+        // force the use of codeartifact:// protocol for resolving
+        repository.url = endpoint.toCodeArtifactProtocolUrl()
+
+        // now everything is a codeartifact:// url; our ResourceConnector handles that protocol,
+        // using the OkHttpClient and injecting the CodeArtifact token.
     }
 
     private fun createRepoCredentials(

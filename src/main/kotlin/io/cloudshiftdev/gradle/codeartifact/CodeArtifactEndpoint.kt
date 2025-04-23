@@ -23,7 +23,7 @@ public interface CodeArtifactEndpoint {
         }
 
         private fun fromUrl(url: URI): CodeArtifactEndpoint? {
-            val urlString = url.toString()
+            val urlString = url.toString().replace("codeartifact://", "https://")
             val match = regex.matchEntire(urlString) ?: return null
             return CodeArtifactEndpointImpl(
                 domain = match.groups["domain"]!!.value,
@@ -51,6 +51,19 @@ public interface CodeArtifactEndpoint {
                 .toRegex()
     }
 }
+
+internal fun CodeArtifactEndpoint.proxyUrl(): URI? {
+    val proxyEnabled = resolveSystemVar("codeartifact.proxy.enabled")?.toBoolean() ?: true
+    if (!proxyEnabled) return null
+
+    val key1 = "codeartifact.${domain}-${domainOwner}-${region}.proxy.base-url"
+    val key2 = "codeartifact.${region}.proxy.base-url"
+    val key3 = "codeartifact.proxy.base-url"
+    return resolveSystemVar(key1, key2, key3)?.let { proxyBaseUrl -> URI(proxyBaseUrl) }
+}
+
+internal fun CodeArtifactEndpoint.toCodeArtifactProtocolUrl(): URI =
+    URI(url.toString().replace("https://", "codeartifact://"))
 
 internal val CodeArtifactEndpoint.cacheKey
     get() = "${domain}-${domainOwner}-${region}"

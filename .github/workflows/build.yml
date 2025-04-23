@@ -3,6 +3,9 @@ name: PR build CodeArtifact plugin
 on:
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: build
