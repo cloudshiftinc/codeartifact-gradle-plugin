@@ -101,6 +101,7 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
     ): ExternalResourceMetaData? {
         logger.debug("Retrieving metadata for resource: {}", location.uri)
         val (url, request) = prepareGetRequest(location)
+        logger.debug("Request: {}; url = {}", request, url)
 
         return executeRequest(request.newBuilder().head().build()).use { response ->
             if (response.code == 404) return null
@@ -126,7 +127,7 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
                 header("User-Agent", UserAgent)
             }
             Pair(url, request)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("Error preparing GET request for resource: ${location.uri}", e)
             throw e
         }
