@@ -5,6 +5,7 @@ import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCod
 import io.cloudshiftdev.gradle.codeartifact.resource.CodeArtifactResourceConnectorFactory
 import javax.inject.Inject
 import okhttp3.OkHttpClient
+import okhttp3.brotli.BrotliInterceptor
 import okhttp3.logging.HttpLoggingInterceptor
 import org.gradle.api.Action
 import org.gradle.api.Plugin
@@ -125,6 +126,7 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
                     .followRedirects(true)
                     .followSslRedirects(false)
                     .addNetworkInterceptor(loggingInterceptor)
+                    .addInterceptor(BrotliInterceptor)
                     .build()
 
             connectorFactories.add(CodeArtifactResourceConnectorFactory(httpClient))

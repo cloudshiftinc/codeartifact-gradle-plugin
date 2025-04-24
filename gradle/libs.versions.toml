@@ -22,6 +22,10 @@ jackson-datatype-jsr310 = { module="com.fasterxml.jackson.datatype:jackson-datat
 
 pearx-kasechange = { module = "net.pearx.kasechange:kasechange", version = "1.4.1" }
 
+okhttp-bom = { module = "com.squareup.okhttp3:okhttp-bom", version = "5.0.0-alpha.14" }
+okhttp = { module = "com.squareup.okhttp3:okhttp" }
+okhttp-logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor" }
+okhttp-brotli = { module = "com.squareup.okhttp3:okhttp-brotli" }
 
 kotest-bom = { module = "io.kotest:kotest-bom", version = "5.9.1" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core" }
