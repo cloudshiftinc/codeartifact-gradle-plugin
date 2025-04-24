@@ -197,7 +197,7 @@ export class Cdn extends Construct {
 
 ## Obtaining CodeArtifact tokens for other (non-Maven repository) uses
 
-If you wish to use CodeArtifact tokens elsehwere, for example configuring `.npmrc` for CodeArtifact npm repositories, you can obtain a token provider using `ProviderFactory.codeArtifactToken(endpoint)`.
+If you wish to use CodeArtifact tokens elsehwere, for example configuring `.npmrc` for CodeArtifact npm repositories, you can obtain a token provider using `Project.codeArtifactToken(endpoint)`.
 
 ## Advanced use
 

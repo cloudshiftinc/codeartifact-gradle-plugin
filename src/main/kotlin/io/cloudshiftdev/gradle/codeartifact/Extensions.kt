@@ -1,12 +1,11 @@
 package io.cloudshiftdev.gradle.codeartifact
 
+import io.cloudshiftdev.gradle.codeartifact.service.registerCodeArtifactBuildService
+import io.cloudshiftdev.gradle.codeartifact.token.registerCodeArtifactTokenService
 import java.net.URI
 import java.security.MessageDigest
-import net.pearx.kasechange.toScreamingSnakeCase
+import org.gradle.api.Project
 import org.gradle.api.provider.Provider
-import org.gradle.api.provider.ProviderFactory
-import org.gradle.kotlin.dsl.assign
-import org.gradle.kotlin.dsl.of
 
 internal fun URI.queryParameters() =
     query?.split("&")?.associate {
@@ -14,19 +13,14 @@ internal fun URI.queryParameters() =
         key to value
     } ?: emptyMap()
 
-internal fun resolveSystemVar(vararg keys: String): String? {
-    return keys.firstNotNullOfOrNull { resolveSystemVarInternal(it) }
-}
-
-internal fun resolveSystemVarInternal(key: String): String? =
-    System.getProperty(key)?.takeIf(String::isNotBlank)
-        ?: System.getenv(key.toScreamingSnakeCase())?.takeIf(String::isNotBlank)
-
 @OptIn(ExperimentalStdlibApi::class)
 internal fun String.sha256(): String {
     return MessageDigest.getInstance("SHA-256").digest(encodeToByteArray()).toHexString()
 }
 
-public fun ProviderFactory.codeArtifactToken(endpoint: CodeArtifactEndpoint): Provider<String> {
-    return of(CodeArtifactTokenValueSource::class) { parameters { this.endpoint = endpoint } }
+public fun Project.codeArtifactToken(endpoint: CodeArtifactEndpoint): Provider<String> {
+    val codeArtifactService = project.gradle.registerCodeArtifactBuildService()
+    return project.gradle.registerCodeArtifactTokenService(codeArtifactService).map { service ->
+        service.resolve(endpoint).value
+    }
 }

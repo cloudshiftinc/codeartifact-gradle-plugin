@@ -47,19 +47,9 @@ public interface CodeArtifactEndpoint {
 
         // https://env-production-123456789012.d.codeartifact.eu-west-1.amazonaws.com/maven/env-data/com/abcd/xyz-sdk/1.22.3/xyz-sdk-1.22.3.pom
         private val regex =
-            """^https://(?<domain>.*?)-(?<domainOwner>[0-9].*?).d.codeartifact.(?<region>.+?).amazonaws.com/(?<type>.+?)/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
+            """^https://(?<domain>.*?)-(?<domainOwner>[0-9].*?).d.codeartifact.(?<region>.+?).amazonaws.com(?::[0-9]+)?/(?<type>.+?)/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
                 .toRegex()
     }
-}
-
-internal fun CodeArtifactEndpoint.proxyUrl(): URI? {
-    val proxyEnabled = resolveSystemVar("codeartifact.proxy.enabled")?.toBoolean() ?: true
-    if (!proxyEnabled) return null
-
-    val key1 = "codeartifact.${domain}-${domainOwner}-${region}.proxy.base-url"
-    val key2 = "codeartifact.${region}.proxy.base-url"
-    val key3 = "codeartifact.proxy.base-url"
-    return resolveSystemVar(key1, key2, key3)?.let { proxyBaseUrl -> URI(proxyBaseUrl) }
 }
 
 internal fun CodeArtifactEndpoint.toCodeArtifactProtocolUrl(): URI =
