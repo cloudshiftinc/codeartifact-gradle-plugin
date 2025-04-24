@@ -1,9 +1,9 @@
 package io.cloudshiftdev.gradle.codeartifact.resource
 
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpointOrNull
-import io.cloudshiftdev.gradle.codeartifact.acquireToken
-import io.cloudshiftdev.gradle.codeartifact.proxyUrl
+import io.cloudshiftdev.gradle.codeartifact.ProxyResolver
 import io.cloudshiftdev.gradle.codeartifact.toHttpsProtocolUrl
+import io.cloudshiftdev.gradle.codeartifact.token.TokenResolver
 import java.io.InputStream
 import java.net.URI
 import java.text.SimpleDateFormat
@@ -33,8 +33,11 @@ import org.gradle.internal.resource.transfer.ExternalResourceUploader
 import org.gradle.internal.resource.transport.http.ApacheDirectoryListingParser
 import org.gradle.util.GradleVersion
 
-public class CodeArtifactResourceConnectorFactory(private val okHttpClient: OkHttpClient) :
-    ResourceConnectorFactory {
+internal class CodeArtifactResourceConnectorFactory(
+    private val okHttpClient: OkHttpClient,
+    private val proxyResolver: ProxyResolver,
+    private val tokenResolver: TokenResolver,
+) : ResourceConnectorFactory {
     private val supportedProtocols = setOf("codeartifact")
 
     override fun getSupportedProtocols(): Set<String> = supportedProtocols
@@ -44,7 +47,7 @@ public class CodeArtifactResourceConnectorFactory(private val okHttpClient: OkHt
     override fun createResourceConnector(
         connectionDetails: ResourceConnectorSpecification
     ): ExternalResourceConnector {
-        val accessor = CodeArtifactResourceAccessor(okHttpClient)
+        val accessor = CodeArtifactResourceAccessor(okHttpClient, proxyResolver, tokenResolver)
         return DefaultExternalResourceConnector(
             accessor,
             CodeArtifactResourceLister(accessor),
@@ -58,8 +61,11 @@ private fun request(block: Request.Builder.() -> Unit): Request {
 }
 
 /** See [org.gradle.internal.resource.transport.http.HttpResourceAccessor] */
-private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClient) :
-    AbstractExternalResourceAccessor() {
+internal class CodeArtifactResourceAccessor(
+    private val okHttpClient: OkHttpClient,
+    private val proxyResolver: ProxyResolver,
+    private val tokenResolver: TokenResolver,
+) : AbstractExternalResourceAccessor() {
     private val logger = Logging.getLogger(CodeArtifactResourceAccessor::class.java)
 
     private companion object {
@@ -70,7 +76,7 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
             val osVersion = System.getProperty("os.version")
             val osArch = System.getProperty("os.arch")
             val javaVendor = System.getProperty("java.vendor")
-            val javaVersion = SystemProperties.getInstance().getJavaVersion()
+            val javaVersion = SystemProperties.getInstance().javaVersion
             val javaVendorVersion = System.getProperty("java.vm.version")
             UserAgent =
                 String.format(
@@ -91,7 +97,6 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
         revalidate: Boolean,
     ): ExternalResourceReadResponse {
         return try {
-            logger.debug("Retrieving resource: {}", location.uri)
             val (url, request) = prepareGetRequest(location)
             val response = executeRequest(request)
             OkHttpResponse(url, response)
@@ -106,9 +111,7 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
         revalidate: Boolean,
     ): ExternalResourceMetaData? {
         return try {
-            logger.debug("Retrieving metadata for resource: {}", location.uri)
             val (url, request) = prepareGetRequest(location)
-            logger.debug("Request: {}; url = {}", request, url)
 
             executeRequest(request.newBuilder().head().build()).use { response ->
                 if (response.code == 404) return null
@@ -127,11 +130,12 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
                 ?: error("Invalid CodeArtifact endpoint: ${location.uri}")
 
         val rawUrl =
-            endpoint.proxyUrl()?.resolve(location.uri.path) ?: location.uri.toHttpsProtocolUrl()
+            proxyResolver.resolve(endpoint)?.resolve(location.uri.path)
+                ?: location.uri.toHttpsProtocolUrl()
 
         val url = rawUrl.toHttpUrlOrNull() ?: error("Invalid URL: $rawUrl")
 
-        val token = endpoint.acquireToken()
+        val token = tokenResolver.resolve(endpoint).value
         val request = request {
             url(url)
             header("Authorization", "Bearer $token")

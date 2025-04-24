@@ -1,4 +1,4 @@
-package io.cloudshiftdev.gradle.codeartifact
+package io.cloudshiftdev.gradle.codeartifact.service
 
 import aws.sdk.kotlin.runtime.auth.credentials.AssumeRoleParameters
 import aws.sdk.kotlin.runtime.auth.credentials.DefaultChainCredentialsProvider
@@ -16,49 +16,62 @@ import aws.smithy.kotlin.runtime.auth.awscredentials.CredentialsProviderChain
 import aws.smithy.kotlin.runtime.collections.Attributes
 import aws.smithy.kotlin.runtime.content.asByteStream
 import aws.smithy.kotlin.runtime.time.toJvmInstant
+import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint
+import io.cloudshiftdev.gradle.codeartifact.CodeArtifactToken
+import io.cloudshiftdev.gradle.codeartifact.DefaultSystemVarResolver
+import io.cloudshiftdev.gradle.codeartifact.GenericPackage
+import io.cloudshiftdev.gradle.codeartifact.SystemVarResolver
+import io.cloudshiftdev.gradle.codeartifact.cacheKey
+import io.cloudshiftdev.gradle.codeartifact.queryParameters
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.measureTime
 import kotlin.time.measureTimedValue
 import kotlinx.coroutines.runBlocking
 import org.gradle.api.logging.Logging
 
-internal object CodeArtifactOperations {
-    private val logger = Logging.getLogger(CodeArtifactOperations::class.java)
+internal interface CodeArtifactService {
+    fun getAuthorizationToken(endpoint: CodeArtifactEndpoint): CodeArtifactToken
 
-    internal fun getAuthorizationToken(endpoint: CodeArtifactEndpoint): CodeArtifactToken {
-        return codeArtifactClient(endpoint).use { codeArtifact ->
-            runBlocking {
-                codeArtifact
-                    .getAuthorizationToken {
-                        domain = endpoint.domain
-                        domainOwner = endpoint.domainOwner
-                        durationSeconds = 12.hours.inWholeSeconds
-                    }
-                    .let {
-                        CodeArtifactToken(
-                            endpoint = endpoint,
-                            value = it.authorizationToken!!,
-                            expiration = it.expiration?.toJvmInstant()!!,
-                        )
-                    }
-            }
+    fun publishPackageVersion(genericPackage: GenericPackage, endpoint: CodeArtifactEndpoint)
+}
+
+internal class DefaultCodeArtifactService : CodeArtifactService {
+    private val logger = Logging.getLogger(DefaultCodeArtifactService::class.java)
+    private val clientFactory = CodeArtifactClientFactory()
+
+    override fun getAuthorizationToken(endpoint: CodeArtifactEndpoint): CodeArtifactToken {
+        val codeArtifact = clientFactory.create(endpoint)
+        return runBlocking {
+            codeArtifact
+                .getAuthorizationToken {
+                    domain = endpoint.domain
+                    domainOwner = endpoint.domainOwner
+                    durationSeconds = 12.hours.inWholeSeconds
+                }
+                .let {
+                    CodeArtifactToken(
+                        endpoint = endpoint,
+                        value = it.authorizationToken!!,
+                        expiration = it.expiration?.toJvmInstant()!!,
+                    )
+                }
         }
     }
 
-    internal fun publishPackageVersion(
+    override fun publishPackageVersion(
         genericPackage: GenericPackage,
         endpoint: CodeArtifactEndpoint,
     ) {
-        codeArtifactClient(endpoint).use { codeArtifact ->
-            genericPackage.assets.forEachIndexed { idx: Int, asset ->
-                publishArtifact(
-                    codeArtifact,
-                    endpoint,
-                    genericPackage,
-                    asset,
-                    idx == genericPackage.assets.size - 1,
-                )
-            }
+        val codeArtifact = clientFactory.create(endpoint)
+        genericPackage.assets.forEachIndexed { idx: Int, asset ->
+            publishArtifact(
+                codeArtifact,
+                endpoint,
+                genericPackage,
+                asset,
+                finished = idx == genericPackage.assets.size - 1,
+            )
         }
     }
 
@@ -95,11 +108,20 @@ internal object CodeArtifactOperations {
             logger.lifecycle("Uploaded ${asset.name} in $timeTaken")
         }
     }
+}
 
-    private fun codeArtifactClient(endpoint: CodeArtifactEndpoint): CodeartifactClient {
-        return CodeartifactClient {
-            region = endpoint.region
-            credentialsProvider = buildCredentialsProvider(endpoint.url.queryParameters())
+private class CodeArtifactClientFactory {
+    private val logger = Logging.getLogger(CodeArtifactClientFactory::class.java)
+    private val systemVarResolver = DefaultSystemVarResolver()
+
+    private val clientCache = ConcurrentHashMap<String, CodeartifactClient>()
+
+    fun create(endpoint: CodeArtifactEndpoint): CodeartifactClient {
+        return clientCache.computeIfAbsent(endpoint.cacheKey) {
+            CodeartifactClient {
+                region = endpoint.region
+                credentialsProvider = buildCredentialsProvider(endpoint.url.queryParameters())
+            }
         }
     }
 
@@ -137,11 +159,11 @@ internal object CodeArtifactOperations {
 
         val providers =
             listOfNotNull(
-                (queryParameters[profileKey] ?: resolveSystemVar(profileKey))?.let {
+                (queryParameters[profileKey] ?: systemVarResolver.resolve(profileKey))?.let {
                     logger.info("Using profile {} for CodeArtifact authentication", it)
                     ProfileCredentialsProvider(profileName = it)
                 },
-                CodeArtifactEnvironmentCredentialsProvider(),
+                CodeArtifactEnvironmentCredentialsProvider(systemVarResolver),
 
                 // https://docs.aws.amazon.com/sdk-for-kotlin/latest/developer-guide/credential-providers.html
                 DefaultChainCredentialsProvider(),
@@ -149,7 +171,7 @@ internal object CodeArtifactOperations {
 
         val bootstrapProviders = CredentialsProviderChain(providers)
         val stsRoleArnKey = "codeartifact.stsRoleArn"
-        val assumeRoleArn = resolveSystemVar(stsRoleArnKey)
+        val assumeRoleArn = systemVarResolver.resolve(stsRoleArnKey)
         logger.info("Assume role arn to get CodeArtifact token: {}", mask(assumeRoleArn))
         val provider =
             assumeRoleArn?.let { roleArn ->
@@ -189,18 +211,20 @@ internal object CodeArtifactOperations {
         return CachedCredentialsProvider(provider)
     }
 
-    private class CodeArtifactEnvironmentCredentialsProvider : CredentialsProvider {
+    private class CodeArtifactEnvironmentCredentialsProvider(
+        private val systemVarResolver: SystemVarResolver
+    ) : CredentialsProvider {
         private fun requireEnv(variable: String): String =
-            resolveSystemVar(variable)
+            systemVarResolver.resolve(variable)
                 ?: throw ProviderConfigurationException(
                     "Missing value for environment variable `$variable`"
                 )
 
         override suspend fun resolve(attributes: Attributes): Credentials {
-            return Credentials(
+            return Credentials.Companion(
                 accessKeyId = requireEnv("codeartifact.accessKeyId"),
                 secretAccessKey = requireEnv("codeartifact.secretAccessKey"),
-                sessionToken = resolveSystemVar("codeartifact.sessionToken"),
+                sessionToken = systemVarResolver.resolve("codeartifact.sessionToken"),
             )
         }
     }

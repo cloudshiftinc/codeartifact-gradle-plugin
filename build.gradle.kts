@@ -136,6 +136,7 @@ testing {
                     implementation(libs.kotest.property)
                     implementation(libs.kotest.runner.junit5)
                     implementation(libs.mockk)
+                    implementation(libs.okhttp.mockwebserver)
                 }
                 targets {
                     all {
