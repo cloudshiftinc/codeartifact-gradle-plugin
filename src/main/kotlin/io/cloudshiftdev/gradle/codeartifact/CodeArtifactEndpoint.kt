@@ -65,6 +65,8 @@ internal fun CodeArtifactEndpoint.proxyUrl(): URI? {
 internal fun CodeArtifactEndpoint.toCodeArtifactProtocolUrl(): URI =
     URI(url.toString().replace("https://", "codeartifact://"))
 
+internal fun URI.toHttpsProtocolUrl(): URI = URI(toString().replace("codeartifact://", "https://"))
+
 internal val CodeArtifactEndpoint.cacheKey
     get() = "${domain}-${domainOwner}-${region}"
 
