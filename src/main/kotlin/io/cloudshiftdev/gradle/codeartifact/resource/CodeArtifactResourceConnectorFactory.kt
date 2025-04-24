@@ -59,7 +59,7 @@ private fun request(block: Request.Builder.() -> Unit): Request {
 /** See [org.gradle.internal.resource.transport.http.HttpResourceAccessor] */
 private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClient) :
     AbstractExternalResourceAccessor() {
-        private val logger = Logging.getLogger(CodeArtifactResourceAccessor::class.java)
+    private val logger = Logging.getLogger(CodeArtifactResourceAccessor::class.java)
 
     private companion object {
         private val UserAgent: String
@@ -110,21 +110,26 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
     }
 
     private fun prepareGetRequest(location: ExternalResourceName): Pair<HttpUrl, Request> {
-        val endpoint =
-            location.uri.toCodeArtifactEndpointOrNull()
-                ?: error("Invalid CodeArtifact endpoint: ${location.uri}")
+        return try {
+            val endpoint =
+                location.uri.toCodeArtifactEndpointOrNull()
+                    ?: error("Invalid CodeArtifact endpoint: ${location.uri}")
 
-        val rawUrl = endpoint.proxyUrl()?.resolve(location.uri.path) ?: location.uri
+            val rawUrl = endpoint.proxyUrl()?.resolve(location.uri.path) ?: location.uri
 
-        val url = rawUrl.toHttpUrlOrNull() ?: error("Invalid URL: $rawUrl")
+            val url = rawUrl.toHttpUrlOrNull() ?: error("Invalid URL: $rawUrl")
 
-        val token = endpoint.acquireToken()
-        val request = request {
-            url(url)
-            header("Authorization", "Bearer $token")
-            header("User-Agent", UserAgent)
+            val token = endpoint.acquireToken()
+            val request = request {
+                url(url)
+                header("Authorization", "Bearer $token")
+                header("User-Agent", UserAgent)
+            }
+            Pair(url, request)
+        } catch (e: Exception) {
+            logger.error("Error preparing GET request for resource: ${location.uri}", e)
+            throw e
         }
-        return Pair(url, request)
     }
 
     private fun executeRequest(request: Request): Response {
