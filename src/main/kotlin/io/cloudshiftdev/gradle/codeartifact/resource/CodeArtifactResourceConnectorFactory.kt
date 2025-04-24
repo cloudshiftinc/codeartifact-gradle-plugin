@@ -141,9 +141,7 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
     }
 
     private fun executeRequest(request: Request): Response {
-        logger.debug("Executing request: {}", request)
         val response = okHttpClient.newCall(request).execute()
-        logger.debug("Response: {}", response)
         if (!response.isSuccessful) response.close()
         return response
     }
