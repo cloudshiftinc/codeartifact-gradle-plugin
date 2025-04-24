@@ -89,48 +89,53 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
         location: ExternalResourceName,
         revalidate: Boolean,
     ): ExternalResourceReadResponse {
-        logger.debug("Retrieving resource: {}", location.uri)
-        val (url, request) = prepareGetRequest(location)
-        val response = executeRequest(request)
-        return OkHttpResponse(url, response)
+        return try {
+            logger.debug("Retrieving resource: {}", location.uri)
+            val (url, request) = prepareGetRequest(location)
+            val response = executeRequest(request)
+            OkHttpResponse(url, response)
+        } catch (t: Throwable) {
+            logger.error("Error retrieving resource: ${location.uri}", t)
+            throw t
+        }
     }
 
     override fun getMetaData(
         location: ExternalResourceName,
         revalidate: Boolean,
     ): ExternalResourceMetaData? {
-        logger.debug("Retrieving metadata for resource: {}", location.uri)
-        val (url, request) = prepareGetRequest(location)
-        logger.debug("Request: {}; url = {}", request, url)
+        return try {
+            logger.debug("Retrieving metadata for resource: {}", location.uri)
+            val (url, request) = prepareGetRequest(location)
+            logger.debug("Request: {}; url = {}", request, url)
 
-        return executeRequest(request.newBuilder().head().build()).use { response ->
-            if (response.code == 404) return null
+            executeRequest(request.newBuilder().head().build()).use { response ->
+                if (response.code == 404) return null
 
-            CodeArtifactMetadata(url, response)
+                CodeArtifactMetadata(url, response)
+            }
+        } catch (t: Throwable) {
+            logger.error("Error retrieving metadata for resource: ${location.uri}", t)
+            throw t
         }
     }
 
     private fun prepareGetRequest(location: ExternalResourceName): Pair<HttpUrl, Request> {
-        return try {
-            val endpoint =
-                location.uri.toCodeArtifactEndpointOrNull()
-                    ?: error("Invalid CodeArtifact endpoint: ${location.uri}")
+        val endpoint =
+            location.uri.toCodeArtifactEndpointOrNull()
+                ?: error("Invalid CodeArtifact endpoint: ${location.uri}")
 
-            val rawUrl = endpoint.proxyUrl()?.resolve(location.uri.path) ?: location.uri
+        val rawUrl = endpoint.proxyUrl()?.resolve(location.uri.path) ?: location.uri
 
-            val url = rawUrl.toHttpUrlOrNull() ?: error("Invalid URL: $rawUrl")
+        val url = rawUrl.toHttpUrlOrNull() ?: error("Invalid URL: $rawUrl")
 
-            val token = endpoint.acquireToken()
-            val request = request {
-                url(url)
-                header("Authorization", "Bearer $token")
-                header("User-Agent", UserAgent)
-            }
-            Pair(url, request)
-        } catch (e: Throwable) {
-            logger.error("Error preparing GET request for resource: ${location.uri}", e)
-            throw e
+        val token = endpoint.acquireToken()
+        val request = request {
+            url(url)
+            header("Authorization", "Bearer $token")
+            header("User-Agent", UserAgent)
         }
+        return Pair(url, request)
     }
 
     private fun executeRequest(request: Request): Response {
