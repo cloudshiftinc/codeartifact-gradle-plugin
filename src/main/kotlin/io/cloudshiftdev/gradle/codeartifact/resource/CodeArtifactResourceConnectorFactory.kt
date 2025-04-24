@@ -12,6 +12,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import org.gradle.api.logging.Logging
 import org.gradle.api.resources.ResourceException
 import org.gradle.authentication.Authentication
 import org.gradle.internal.SystemProperties
@@ -58,6 +59,7 @@ private fun request(block: Request.Builder.() -> Unit): Request {
 /** See [org.gradle.internal.resource.transport.http.HttpResourceAccessor] */
 private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClient) :
     AbstractExternalResourceAccessor() {
+        private val logger = Logging.getLogger(CodeArtifactResourceAccessor::class.java)
 
     private companion object {
         private val UserAgent: String
@@ -87,6 +89,7 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
         location: ExternalResourceName,
         revalidate: Boolean,
     ): ExternalResourceReadResponse {
+        logger.debug("Retrieving resource: {}", location.uri)
         val (url, request) = prepareGetRequest(location)
         val response = executeRequest(request)
         return OkHttpResponse(url, response)
@@ -96,6 +99,7 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
         location: ExternalResourceName,
         revalidate: Boolean,
     ): ExternalResourceMetaData? {
+        logger.debug("Retrieving metadata for resource: {}", location.uri)
         val (url, request) = prepareGetRequest(location)
 
         return executeRequest(request.newBuilder().head().build()).use { response ->
@@ -124,7 +128,9 @@ private class CodeArtifactResourceAccessor(private val okHttpClient: OkHttpClien
     }
 
     private fun executeRequest(request: Request): Response {
+        logger.debug("Executing request: {}", request)
         val response = okHttpClient.newCall(request).execute()
+        logger.debug("Response: {}", response)
         if (!response.isSuccessful) response.close()
         return response
     }
