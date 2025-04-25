@@ -98,7 +98,7 @@ Repositories configured for publishing are not configured to use the proxy.
 
 ## Setting up CloudFront with CodeArtifact
 
-CloudFront can be used as a content delivery network in front of CloudFront to optimize downloads for distributed teams.
+CloudFront can be used as a content delivery network in front of CodeArtifact to optimize downloads for distributed teams.
 
 Here is an example of a CloudFront distribution configuration via AWS CDK:
 
@@ -197,7 +197,7 @@ export class Cdn extends Construct {
 
 ## Obtaining CodeArtifact tokens for other (non-Maven repository) uses
 
-If you wish to use CodeArtifact tokens elsehwere, for example configuring `.npmrc` for CodeArtifact npm repositories, you can obtain a token provider using `Project.codeArtifactToken(endpoint)`.
+If you wish to use CodeArtifact tokens elsewhere, for example configuring `.npmrc` for CodeArtifact npm repositories, you can obtain a token provider using `ProviderFactory.codeArtifactToken(endpoint)`.
 
 ## Advanced use
 
