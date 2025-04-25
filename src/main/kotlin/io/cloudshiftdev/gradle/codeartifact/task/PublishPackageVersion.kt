@@ -2,13 +2,13 @@ package io.cloudshiftdev.gradle.codeartifact.task
 
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.GenericPackage
-import io.cloudshiftdev.gradle.codeartifact.service.CodeArtifactBuildService
+import io.cloudshiftdev.gradle.codeartifact.service.CodeArtifactService
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.provider.Property
-import org.gradle.api.services.ServiceReference
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
@@ -29,7 +29,7 @@ public abstract class PublishPackageVersion : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     public abstract val artifacts: ConfigurableFileCollection
 
-    @get:ServiceReference internal abstract val service: Property<CodeArtifactBuildService>
+    @get:Internal internal abstract val service: Property<CodeArtifactService>
 
     @TaskAction
     public fun publish() {

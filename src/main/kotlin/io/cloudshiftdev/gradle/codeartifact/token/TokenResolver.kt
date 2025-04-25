@@ -3,27 +3,13 @@ package io.cloudshiftdev.gradle.codeartifact.token
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactToken
 import io.cloudshiftdev.gradle.codeartifact.cacheKey
-import io.cloudshiftdev.gradle.codeartifact.service.CodeArtifactBuildService
+import io.cloudshiftdev.gradle.codeartifact.service.CodeArtifactService
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
-import javax.inject.Inject
 import org.gradle.api.GradleException
-import org.gradle.api.invocation.Gradle
-import org.gradle.api.provider.Property
-import org.gradle.api.provider.Provider
-import org.gradle.api.services.BuildService
-import org.gradle.api.services.BuildServiceParameters
-import org.gradle.api.services.BuildServiceRegistry
-import org.gradle.kotlin.dsl.registerIfAbsent
 
-internal interface TokenResolverParameters : BuildServiceParameters {
-    val codeArtifactService: Property<CodeArtifactBuildService>
-}
-
-internal abstract class TokenResolverBuildService
-@Inject
-constructor(private val registry: BuildServiceRegistry) :
-    BuildService<TokenResolverParameters>, TokenResolver {
+internal class DefaultTokenResolver(private val codeArtifactService: CodeArtifactService) :
+    TokenResolver {
     private val resolver =
         ErrorMessageTokenResolver(
             MemoryCacheTokenResolver(
@@ -31,24 +17,13 @@ constructor(private val registry: BuildServiceRegistry) :
                     cacheDir =
                         File(System.getProperty("user.home"))
                             .resolve(".gradle/caches/codeartifact"),
-                    delegate = { parameters.codeArtifactService.get().getAuthorizationToken(it) },
+                    delegate = { codeArtifactService.getAuthorizationToken(it) },
                 )
             )
         )
 
     override fun resolve(endpoint: CodeArtifactEndpoint): CodeArtifactToken {
         return resolver.resolve(endpoint)
-    }
-}
-
-internal fun Gradle.registerCodeArtifactTokenService(
-    codeArtifactService: Provider<CodeArtifactBuildService>
-): Provider<TokenResolverBuildService> {
-    return gradle.sharedServices.registerIfAbsent(
-        "codeArtifactTokenResolver",
-        TokenResolverBuildService::class,
-    ) {
-        parameters.codeArtifactService.set(codeArtifactService)
     }
 }
 
