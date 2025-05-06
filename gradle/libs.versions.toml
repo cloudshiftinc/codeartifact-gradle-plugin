@@ -15,7 +15,7 @@ aws-sdk-kotlin-v1-codeartifact = { module = "aws.sdk.kotlin:codeartifact" }
 
 google-tink = { module = "com.google.crypto.tink:tink", version = "1.17.0" }
 
-jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.18.3" }
+jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.19.0" }
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind" }
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
@@ -36,4 +36,4 @@ kotest-framework-datatest = { module = "io.kotest:kotest-framework-datatest" }
 kotest-property = { module = "io.kotest:kotest-property" }
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5" }
 
-mockk = { module = "io.mockk:mockk", version = "1.14.0" }
+mockk = { module = "io.mockk:mockk", version = "1.14.2" }
