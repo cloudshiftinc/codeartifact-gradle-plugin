@@ -54,7 +54,7 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     }
 
     private fun applyToGradle(gradle: Gradle) {
-        val ctx = initPlugin(gradle)
+        initPlugin(gradle)
 
         gradle.beforeSettings {
             buildscript.repositories.all {
@@ -81,7 +81,7 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     }
 
     private fun applyToSettings(settings: Settings) {
-        val ctx = initPlugin(settings.gradle)
+        initPlugin(settings.gradle)
         settings.pluginManagement.repositories.all {
             configureForCodeArtifact(RepositoryMode.Resolve, settings.providers)
         }

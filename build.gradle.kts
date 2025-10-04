@@ -2,7 +2,6 @@ import java.nio.charset.StandardCharsets
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     `kotlin-dsl`
@@ -54,10 +53,10 @@ signing {
 kotlin {
     explicitApi()
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_17
+        jvmTarget = JvmTarget.JVM_21
         val additionalArgs =
             listOfNotNull(
-                    "jdk-release=17", // https://jakewharton.com/kotlins-jdk-release-compatibility-flag/
+                    "jdk-release=21", // https://jakewharton.com/kotlins-jdk-release-compatibility-flag/
                     "jsr305=strict",
                 )
                 .map { "-X$it" }
@@ -77,7 +76,7 @@ spotless {
 
 internal fun Project.ktfmtVersion(): String {
     val resourceUri = this::class.java.getResource("/codeartifact-plugin/ktfmt-version.txt")
-    return resourceUri?.let { resources.text.fromUri(it).asString() } ?: "0.52"
+    return resourceUri?.let { resources.text.fromUri(it).asString() } ?: "0.58"
 }
 
 tasks {
@@ -98,13 +97,6 @@ tasks {
     withType<ValidatePlugins>().configureEach {
         enableStricterValidation = true
         failOnWarning = true
-    }
-
-    named<KotlinCompile>("compileKotlin") {
-        compilerOptions {
-            apiVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9
-            languageVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9
-        }
     }
 
     withType<PublishToMavenRepository>().configureEach {
@@ -132,7 +124,6 @@ testing {
                     implementation(platform(libs.kotest.bom))
                     implementation(libs.kotest.assertions.core)
                     implementation(libs.kotest.assertions.json)
-                    implementation(libs.kotest.framework.datatest)
                     implementation(libs.kotest.property)
                     implementation(libs.kotest.runner.junit5)
                     implementation(libs.mockk)

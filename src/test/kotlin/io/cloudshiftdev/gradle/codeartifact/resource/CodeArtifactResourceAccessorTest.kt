@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalOkHttpApi::class)
-
 package io.cloudshiftdev.gradle.codeartifact.resource
 
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint
@@ -15,7 +13,6 @@ import java.net.URI
 import java.util.zip.GZIPOutputStream
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
-import okhttp3.ExperimentalOkHttpApi
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Response
@@ -23,7 +20,6 @@ import okio.Buffer
 import org.gradle.internal.resource.ExternalResourceName
 import org.gradle.internal.resource.metadata.ExternalResourceMetaData
 
-@OptIn(ExperimentalOkHttpApi::class)
 class CodeArtifactResourceAccessorTest :
     FunSpec({
         test("GET works") {
@@ -128,7 +124,7 @@ class CodeArtifactResourceAccessorTest :
 
                 val req = server.takeRequest()
                 assertSoftly {
-                    req.path shouldBe url.path
+                    req.url.encodedPath shouldBe url.path
                     req.method shouldBe "GET"
                     val headers = req.headers
                     headers["Authorization"] shouldBe "Bearer ${token.value}"
@@ -162,13 +158,11 @@ private fun CodeArtifactEndpoint.withPath(path: String): URI {
 
 private fun withMockWebServer(block: (MockWebServer, OkHttpClient) -> Unit) {
 
-    val server = MockWebServer()
-    server.start()
-    val httpClient = OkHttpClient.Builder().addInterceptor(MockWebServerInterceptor(server)).build()
-    try {
+    MockWebServer().use { server ->
+        server.start()
+        val httpClient =
+            OkHttpClient.Builder().addInterceptor(MockWebServerInterceptor(server)).build()
         block(server, httpClient)
-    } finally {
-        server.shutdown()
     }
 }
 

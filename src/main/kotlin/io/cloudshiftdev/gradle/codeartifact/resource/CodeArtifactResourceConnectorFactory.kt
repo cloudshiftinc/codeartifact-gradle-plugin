@@ -198,7 +198,7 @@ internal class CodeArtifactResourceAccessor(
                 }
             }
 
-        override fun getLocation(): URI? = location
+        override fun getLocation(): URI = location
 
         override fun getLastModified(): Date = lastModified
 
@@ -239,7 +239,7 @@ private class CodeArtifactResourceLister(private val accessor: CodeArtifactResou
                     } catch (e: Exception) {
                         throw ResourceException(
                             directory.uri,
-                            "Unable to parse HTTP directory listing for '${directory.getUri()}'.",
+                            "Unable to parse HTTP directory listing for '${directory.uri}'.",
                             e,
                         )
                     }

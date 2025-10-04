@@ -187,22 +187,22 @@ private class CodeArtifactClientFactory {
                             // what the underlying policy allows
                             policy =
                                 """
-                        {
-                          "Version": "2012-10-17",
-                          "Statement": [
-                            {
-                              "Effect": "Allow",
-                              "Action": "codeartifact:*",
-                              "Resource": "*"
-                            },
-                            {
-                              "Effect": "Allow",
-                              "Action": "sts:GetServiceBearerToken",
-                              "Resource": "*"                           
-                            }
-                          ]
-                        }
-                    """
+                                    {
+                                      "Version": "2012-10-17",
+                                      "Statement": [
+                                        {
+                                          "Effect": "Allow",
+                                          "Action": "codeartifact:*",
+                                          "Resource": "*"
+                                        },
+                                        {
+                                          "Effect": "Allow",
+                                          "Action": "sts:GetServiceBearerToken",
+                                          "Resource": "*"                           
+                                        }
+                                      ]
+                                    }
+                                """
                                     .trimIndent(),
                         ),
                 )
