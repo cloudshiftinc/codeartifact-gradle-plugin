@@ -92,7 +92,7 @@ internal class DefaultCodeArtifactService : CodeArtifactService {
                 logger.lifecycle(
                     "Uploading CodeArtifact generic artifact asset '${asset.name}' (${genericPackage.namespace}/${genericPackage.name}/${genericPackage.version}) (size: ${asset.content.length()} to ${endpoint.url}"
                 )
-                // workaround for https://github.com/awslabs/aws-sdk-kotlin/issues/1217
+
                 codeArtifact.publishPackageVersion {
                     domain = endpoint.domain
                     domainOwner = endpoint.domainOwner

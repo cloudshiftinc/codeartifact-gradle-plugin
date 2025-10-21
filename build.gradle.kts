@@ -32,6 +32,10 @@ dependencies {
     implementation("aws.smithy.kotlin:http-client-engine-okhttp")
 }
 
+java {
+    consistentResolution { useCompileClasspathVersions() }
+}
+
 gradlePlugin {
     website = "https://github.com/cloudshiftinc/codeartifact-gradle-plugin"
     vcsUrl = "https://github.com/cloudshiftinc/codeartifact-gradle-plugin"
