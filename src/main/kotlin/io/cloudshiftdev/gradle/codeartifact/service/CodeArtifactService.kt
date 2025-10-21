@@ -15,7 +15,6 @@ import aws.smithy.kotlin.runtime.auth.awscredentials.CredentialsProvider
 import aws.smithy.kotlin.runtime.auth.awscredentials.CredentialsProviderChain
 import aws.smithy.kotlin.runtime.collections.Attributes
 import aws.smithy.kotlin.runtime.content.asByteStream
-import aws.smithy.kotlin.runtime.http.engine.HttpClientEngine
 import aws.smithy.kotlin.runtime.http.engine.crt.CrtHttpEngine
 import aws.smithy.kotlin.runtime.time.toJvmInstant
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint
@@ -40,8 +39,7 @@ internal interface CodeArtifactService {
 
 internal class DefaultCodeArtifactService : CodeArtifactService {
     private val logger = Logging.getLogger(DefaultCodeArtifactService::class.java)
-    private val httpClient by lazy { CrtHttpEngine() }
-    private val clientFactory = CodeArtifactClientFactory({ httpClient })
+    private val clientFactory = CodeArtifactClientFactory()
 
     override fun getAuthorizationToken(endpoint: CodeArtifactEndpoint): CodeArtifactToken {
         val codeArtifact = clientFactory.create(endpoint)
@@ -113,7 +111,7 @@ internal class DefaultCodeArtifactService : CodeArtifactService {
     }
 }
 
-private class CodeArtifactClientFactory(private val httpClientFactory: () -> HttpClientEngine) {
+private class CodeArtifactClientFactory() {
     private val logger = Logging.getLogger(CodeArtifactClientFactory::class.java)
     private val systemVarResolver = DefaultSystemVarResolver()
 
@@ -121,16 +119,19 @@ private class CodeArtifactClientFactory(private val httpClientFactory: () -> Htt
 
     fun create(endpoint: CodeArtifactEndpoint): CodeartifactClient {
         return clientCache.computeIfAbsent(endpoint.cacheKey) {
+            val httpEnginex = CrtHttpEngine()
             CodeartifactClient {
                 region = endpoint.region
-                credentialsProvider = buildCredentialsProvider(endpoint.url.queryParameters())
-                this.httpClient = this@CodeArtifactClientFactory.httpClientFactory()
+                credentialsProvider =
+                    buildCredentialsProvider(endpoint.url.queryParameters(), httpEnginex)
+                this.httpClient = httpEnginex
             }
         }
     }
 
     private fun buildCredentialsProvider(
-        queryParameters: Map<String, String>
+        queryParameters: Map<String, String>,
+        httpEnginex: CrtHttpEngine,
     ): CredentialsProvider {
         fun mask(value: String?): String? =
             when {
@@ -181,7 +182,7 @@ private class CodeArtifactClientFactory(private val httpClientFactory: () -> Htt
             assumeRoleArn?.let { roleArn ->
                 StsAssumeRoleCredentialsProvider(
                     bootstrapCredentialsProvider = bootstrapProviders,
-                    httpClient = this@CodeArtifactClientFactory.httpClientFactory(),
+                    httpClient = httpEnginex,
                     assumeRoleParameters =
                         AssumeRoleParameters(
                             roleArn = roleArn,
