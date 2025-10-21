@@ -15,7 +15,8 @@ import aws.smithy.kotlin.runtime.auth.awscredentials.CredentialsProvider
 import aws.smithy.kotlin.runtime.auth.awscredentials.CredentialsProviderChain
 import aws.smithy.kotlin.runtime.collections.Attributes
 import aws.smithy.kotlin.runtime.content.asByteStream
-import aws.smithy.kotlin.runtime.http.engine.crt.CrtHttpEngine
+import aws.smithy.kotlin.runtime.http.engine.HttpClientEngine
+import aws.smithy.kotlin.runtime.http.engine.okhttp.OkHttpEngine
 import aws.smithy.kotlin.runtime.time.toJvmInstant
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactToken
@@ -119,7 +120,7 @@ private class CodeArtifactClientFactory() {
 
     fun create(endpoint: CodeArtifactEndpoint): CodeartifactClient {
         return clientCache.computeIfAbsent(endpoint.cacheKey) {
-            val httpEnginex = CrtHttpEngine()
+            val httpEnginex = OkHttpEngine()
             CodeartifactClient {
                 region = endpoint.region
                 credentialsProvider =
@@ -131,7 +132,7 @@ private class CodeArtifactClientFactory() {
 
     private fun buildCredentialsProvider(
         queryParameters: Map<String, String>,
-        httpEnginex: CrtHttpEngine,
+        httpEnginex: HttpClientEngine,
     ): CredentialsProvider {
         fun mask(value: String?): String? =
             when {
