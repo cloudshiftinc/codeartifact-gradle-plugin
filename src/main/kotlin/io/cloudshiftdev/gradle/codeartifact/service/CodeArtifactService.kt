@@ -15,6 +15,8 @@ import aws.smithy.kotlin.runtime.auth.awscredentials.CredentialsProvider
 import aws.smithy.kotlin.runtime.auth.awscredentials.CredentialsProviderChain
 import aws.smithy.kotlin.runtime.collections.Attributes
 import aws.smithy.kotlin.runtime.content.asByteStream
+import aws.smithy.kotlin.runtime.http.engine.HttpClientEngine
+import aws.smithy.kotlin.runtime.http.engine.crt.CrtHttpEngine
 import aws.smithy.kotlin.runtime.time.toJvmInstant
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactToken
@@ -38,7 +40,8 @@ internal interface CodeArtifactService {
 
 internal class DefaultCodeArtifactService : CodeArtifactService {
     private val logger = Logging.getLogger(DefaultCodeArtifactService::class.java)
-    private val clientFactory = CodeArtifactClientFactory()
+    private val httpClient = CrtHttpEngine()
+    private val clientFactory = CodeArtifactClientFactory(httpClient)
 
     override fun getAuthorizationToken(endpoint: CodeArtifactEndpoint): CodeArtifactToken {
         val codeArtifact = clientFactory.create(endpoint)
@@ -110,7 +113,7 @@ internal class DefaultCodeArtifactService : CodeArtifactService {
     }
 }
 
-private class CodeArtifactClientFactory {
+private class CodeArtifactClientFactory(private val httpClient: HttpClientEngine) {
     private val logger = Logging.getLogger(CodeArtifactClientFactory::class.java)
     private val systemVarResolver = DefaultSystemVarResolver()
 
@@ -121,6 +124,7 @@ private class CodeArtifactClientFactory {
             CodeartifactClient {
                 region = endpoint.region
                 credentialsProvider = buildCredentialsProvider(endpoint.url.queryParameters())
+                this.httpClient = this@CodeArtifactClientFactory.httpClient
             }
         }
     }
@@ -177,6 +181,7 @@ private class CodeArtifactClientFactory {
             assumeRoleArn?.let { roleArn ->
                 StsAssumeRoleCredentialsProvider(
                     bootstrapCredentialsProvider = bootstrapProviders,
+                    httpClient = this@CodeArtifactClientFactory.httpClient,
                     assumeRoleParameters =
                         AssumeRoleParameters(
                             roleArn = roleArn,
