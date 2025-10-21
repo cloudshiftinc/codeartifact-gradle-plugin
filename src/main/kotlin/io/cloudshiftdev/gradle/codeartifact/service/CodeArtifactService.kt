@@ -40,8 +40,8 @@ internal interface CodeArtifactService {
 
 internal class DefaultCodeArtifactService : CodeArtifactService {
     private val logger = Logging.getLogger(DefaultCodeArtifactService::class.java)
-    private val httpClient = CrtHttpEngine()
-    private val clientFactory = CodeArtifactClientFactory(httpClient)
+    private val httpClient by lazy { CrtHttpEngine() }
+    private val clientFactory = CodeArtifactClientFactory({ httpClient })
 
     override fun getAuthorizationToken(endpoint: CodeArtifactEndpoint): CodeArtifactToken {
         val codeArtifact = clientFactory.create(endpoint)
@@ -113,7 +113,7 @@ internal class DefaultCodeArtifactService : CodeArtifactService {
     }
 }
 
-private class CodeArtifactClientFactory(private val httpClient: HttpClientEngine) {
+private class CodeArtifactClientFactory(private val httpClientFactory: () -> HttpClientEngine) {
     private val logger = Logging.getLogger(CodeArtifactClientFactory::class.java)
     private val systemVarResolver = DefaultSystemVarResolver()
 
@@ -124,7 +124,7 @@ private class CodeArtifactClientFactory(private val httpClient: HttpClientEngine
             CodeartifactClient {
                 region = endpoint.region
                 credentialsProvider = buildCredentialsProvider(endpoint.url.queryParameters())
-                this.httpClient = this@CodeArtifactClientFactory.httpClient
+                this.httpClient = this@CodeArtifactClientFactory.httpClientFactory()
             }
         }
     }
@@ -181,7 +181,7 @@ private class CodeArtifactClientFactory(private val httpClient: HttpClientEngine
             assumeRoleArn?.let { roleArn ->
                 StsAssumeRoleCredentialsProvider(
                     bootstrapCredentialsProvider = bootstrapProviders,
-                    httpClient = this@CodeArtifactClientFactory.httpClient,
+                    httpClient = this@CodeArtifactClientFactory.httpClientFactory(),
                     assumeRoleParameters =
                         AssumeRoleParameters(
                             roleArn = roleArn,
