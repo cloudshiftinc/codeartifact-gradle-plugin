@@ -31,6 +31,7 @@ dependencies {
 
     implementation(platform("aws.smithy.kotlin:bom:1.5.15"))
     implementation("aws.smithy.kotlin:http-client-engine-crt")
+    implementation("aws.smithy.kotlin:aws-signing-default")
 }
 
 gradlePlugin {
