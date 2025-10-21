@@ -29,8 +29,8 @@ dependencies {
 
     implementation(libs.pearx.kasechange)
 
-    implementation(platform("aws.smithy.kotlin:bom:1.5.15"))
-    implementation("aws.smithy.kotlin:http-client-engine-okhttp")
+    //    implementation(platform("aws.smithy.kotlin:bom:1.5.15"))
+    //    implementation("aws.smithy.kotlin:http-client-engine-okhttp")
 }
 
 gradlePlugin {
