@@ -13,7 +13,7 @@ ktfmt =  { module = "com.facebook.ktfmt:ktfmt", version = "0.58" }
 aws-sdk-kotlin-v1-bom = { module = "aws.sdk.kotlin:bom", version = "1.5.54" }
 aws-sdk-kotlin-v1-codeartifact = { module = "aws.sdk.kotlin:codeartifact" }
 
-google-tink = { module = "com.google.crypto.tink:tink", version = "1.18.0" }
+google-tink = { module = "com.google.crypto.tink:tink", version = "1.19.0" }
 
 jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.20.0" }
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core" }
@@ -29,7 +29,7 @@ okhttp-logging-interceptor = { module = "com.squareup.okhttp3:logging-intercepto
 okhttp-brotli = { module = "com.squareup.okhttp3:okhttp-brotli" }
 okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver" }
 
-kotest-bom = { module = "io.kotest:kotest-bom", version = "6.0.3" }
+kotest-bom = { module = "io.kotest:kotest-bom", version = "6.0.4" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core" }
 kotest-assertions-json = { module = "io.kotest:kotest-assertions-json" }
 kotest-property = { module = "io.kotest:kotest-property" }
