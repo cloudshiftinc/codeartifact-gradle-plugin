@@ -35,4 +35,4 @@ kotest-assertions-json = { module = "io.kotest:kotest-assertions-json" }
 kotest-property = { module = "io.kotest:kotest-property" }
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5" }
 
-mockk = { module = "io.mockk:mockk", version = "1.14.6" }
+mockk = { module = "io.mockk:mockk", version = "1.14.7" }
