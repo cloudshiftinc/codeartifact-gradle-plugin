@@ -13,7 +13,7 @@ ktfmt =  { module = "com.facebook.ktfmt:ktfmt", version = "0.58" }
 aws-sdk-kotlin-v1-bom = { module = "aws.sdk.kotlin:bom", version = "1.5.54" }
 aws-sdk-kotlin-v1-codeartifact = { module = "aws.sdk.kotlin:codeartifact" }
 
-google-tink = { module = "com.google.crypto.tink:tink", version = "1.19.0" }
+google-tink = { module = "com.google.crypto.tink:tink", version = "1.20.0" }
 
 jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.20.1" }
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core" }
