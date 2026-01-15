@@ -18,6 +18,7 @@ import aws.smithy.kotlin.runtime.content.asByteStream
 import aws.smithy.kotlin.runtime.http.engine.HttpClientEngine
 import aws.smithy.kotlin.runtime.http.engine.okhttp.OkHttpEngine
 import aws.smithy.kotlin.runtime.time.toJvmInstant
+import io.cloudshiftdev.gradle.codeartifact.AwsCredentialsFileHelper
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactToken
 import io.cloudshiftdev.gradle.codeartifact.DefaultSystemVarResolver
@@ -162,10 +163,26 @@ private class CodeArtifactClientFactory() {
         logger.debug("CodeArtifact Environment variables: {}", envVars)
 
         val profileKey = "codeartifact.profile"
+        val profileName = queryParameters[profileKey] ?: systemVarResolver.resolve(profileKey)
+
+        val ignoreStaticCredsKey = "codeartifact.ignoreStaticCredentials"
+        val ignoreStaticCreds =
+            systemVarResolver.resolve(ignoreStaticCredsKey)?.toBoolean() ?: false
+
+        if (ignoreStaticCreds && profileName != null) {
+            val helper = AwsCredentialsFileHelper()
+            if (helper.hasStaticCredentials(profileName)) {
+                logger.warn(
+                    "Removing static credentials for profile '{}' from ~/.aws/credentials",
+                    profileName,
+                )
+                helper.removeStaticCredentials(profileName)
+            }
+        }
 
         val providers =
             listOfNotNull(
-                (queryParameters[profileKey] ?: systemVarResolver.resolve(profileKey))?.let {
+                profileName?.let {
                     logger.info("Using profile {} for CodeArtifact authentication", it)
                     ProfileCredentialsProvider(profileName = it)
                 },
