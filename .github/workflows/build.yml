@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -24,11 +24,11 @@ jobs:
 
       # https://github.com/gradle/actions/tree/main/setup-gradle
       - name: 'Set up Gradle'
-        uses: 'gradle/actions/setup-gradle@f29f5a9d7b09a7c6b29859002d29d24e1674c884' # v4
+        uses: 'gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92' # v4
 
         # https://github.com/gradle/actions/tree/main/dependency-submission
       - name: "Generate and submit dependency graph"
-        uses: "gradle/actions/dependency-submission@f29f5a9d7b09a7c6b29859002d29d24e1674c884" # v4
+        uses: "gradle/actions/dependency-submission@3f131e8634966bd73d06cc69884922b02e6faf92" # v4
         env:
           DEPENDENCY_GRAPH_EXCLUDE_PROJECTS: "^:(build-logic|buildSrc|.*[Tt]test.*)"
           DEPENDENCY_GRAPH_EXCLUDE_CONFIGURATIONS: ".*[Tt]est.*Classpath"
