@@ -1,6 +1,8 @@
 package io.cloudshiftdev.gradle.codeartifact.internal.gradle
 
 import java.net.URI
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository
+import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.invocation.Gradle
 import org.gradle.internal.resource.connector.ResourceConnectorFactory
 
@@ -13,6 +15,18 @@ internal interface GradleInternals {
     fun connectorRegistry(gradle: Gradle): ResourceConnectorRegistry
 
     val httpErrors: HttpErrorFactory
+
+    /**
+     * Sets [credentials] on [repository] without resolving them, so a provider-backed password
+     * (e.g. a CodeArtifact token) is only fetched when Gradle actually uses it.
+     *
+     * @return `false` if this Gradle version offers no way to do that; callers then fall back to
+     *   the public (eager) credentials API.
+     */
+    fun setLazyCredentials(
+        repository: MavenArtifactRepository,
+        credentials: PasswordCredentials,
+    ): Boolean
 }
 
 /** Registers [ResourceConnectorFactory] instances with Gradle's repository transport. */

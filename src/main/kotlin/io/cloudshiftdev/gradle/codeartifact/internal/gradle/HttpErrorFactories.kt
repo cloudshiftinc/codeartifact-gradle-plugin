@@ -22,12 +22,13 @@ internal abstract class ReflectiveHttpErrorFactory(
     private val classLoader: ClassLoader,
 ) : ProbedHttpErrorFactory {
     private val constructor: Constructor<*>? by lazy {
-        loadClassOrNull(className, classLoader)?.let {
-            try {
-                it.getConstructor(*parameterTypes)
-            } catch (_: NoSuchMethodException) {
-                null
-            }
+        try {
+            loadClassOrNull(className, classLoader)?.getConstructor(*parameterTypes)
+        } catch (_: NoSuchMethodException) {
+            null
+        } catch (_: LinkageError) {
+            // class present but unloadable (e.g. a missing dependency): treat as unavailable
+            null
         }
     }
 
@@ -110,7 +111,10 @@ internal class FallbackHttpErrorFactory(
             primary.create(method, uri, statusCode, reason)
         } catch (e: Exception) {
             if (warned.compareAndSet(false, true)) {
-                logger.debug("Unable to create Gradle HTTP error exception; falling back", e)
+                logger.warn(
+                    "Unable to create Gradle's HTTP error exception; CodeArtifact HTTP errors will not be retried",
+                    e,
+                )
             }
             fallback.create(method, uri, statusCode, reason)
         }

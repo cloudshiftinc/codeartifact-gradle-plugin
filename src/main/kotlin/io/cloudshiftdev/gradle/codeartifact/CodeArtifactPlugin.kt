@@ -17,7 +17,6 @@ import org.gradle.api.artifacts.repositories.ArtifactRepository
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.initialization.Settings
-import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.logging.Logging
 import org.gradle.api.model.ObjectFactory
@@ -26,6 +25,7 @@ import org.gradle.api.provider.Property
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.plugins.MavenPublishPlugin
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 import org.gradle.kotlin.dsl.apply
@@ -38,6 +38,11 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     private val logger = Logging.getLogger(CodeArtifactPlugin::class.java)
     private val systemVarResolver = DefaultSystemVarResolver()
     private val gradleInternals: GradleInternals = DefaultGradleInternals.instance
+
+    private companion object {
+        /** `false` skips the (internal API) lazy credentials path; see README. */
+        const val LAZY_CREDENTIALS_KEY = "codeartifact.lazyCredentials"
+    }
 
     override fun apply(target: PluginAware) {
         when (target) {
@@ -104,10 +109,7 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
         project.plugins.withType<MavenPublishPlugin> {
             project.configure<PublishingExtension> {
                 repositories.all {
-                    configureForCodeArtifact(
-                        RepositoryMode.Publish(project.gradle.gradleUserHomeDir),
-                        project.providers,
-                    )
+                    configureForCodeArtifact(RepositoryMode.Publish(project), project.providers)
                 }
             }
         }
@@ -116,14 +118,14 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     private sealed class RepositoryMode {
         data object Resolve : RepositoryMode()
 
-        data class Publish(val gradleUserHome: File) : RepositoryMode()
+        class Publish(val project: Project) : RepositoryMode()
     }
 
     private fun ArtifactRepository.configureForCodeArtifact(
         repositoryMode: RepositoryMode,
         providers: ProviderFactory,
     ) {
-        val repository = this as? DefaultMavenArtifactRepository ?: return
+        val repository = this as? MavenArtifactRepository ?: return
         val endpoint = repository.url.toCodeArtifactEndpointOrNull() ?: return
 
         val domainRegex =
@@ -135,9 +137,21 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
                 "Configuring CodeArtifact publishing repository authentication: ${endpoint.url}"
             )
 
-            repository.setConfiguredCredentials(
-                createRepoCredentials(providers, endpoint, repositoryMode.gradleUserHome)
-            )
+            val project = repositoryMode.project
+            val credentials =
+                createRepoCredentials(providers, endpoint, project.gradle.gradleUserHomeDir)
+            val lazyCredentials =
+                systemVarResolver.resolve(LAZY_CREDENTIALS_KEY)?.toBoolean() ?: true
+            if (!lazyCredentials || !gradleInternals.setLazyCredentials(repository, credentials)) {
+                if (lazyCredentials) {
+                    logger.warn(
+                        "Unable to set lazy CodeArtifact credentials on repository '{}'; " +
+                            "the token will be fetched when a publish to it is scheduled",
+                        repository.name,
+                    )
+                }
+                setCredentialsWhenPublishing(project, repository, credentials)
+            }
             return
         }
 
@@ -146,6 +160,30 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
 
         // now everything is a codeartifact:// url; our ResourceConnector handles that protocol,
         // using OkHttpClient and authenticating with a CodeArtifact token.
+    }
+
+    /**
+     * Public-API fallback for lazy credentials: `credentials(Action)` copies values eagerly, so
+     * only apply it (and so fetch the token) once the task graph shows a publish to [repository].
+     * Builds that never publish, e.g. resolve-only CI jobs without AWS credentials, never fetch a
+     * token.
+     */
+    private fun setCredentialsWhenPublishing(
+        project: Project,
+        repository: MavenArtifactRepository,
+        credentials: PasswordCredentials,
+    ) {
+        project.gradle.taskGraph.whenReady {
+            val publishing = allTasks.any {
+                it is PublishToMavenRepository && it.repository === repository
+            }
+            if (publishing) {
+                repository.credentials(PasswordCredentials::class.java) {
+                    username = credentials.username
+                    password = credentials.password
+                }
+            }
+        }
     }
 
     private fun createRepoCredentials(

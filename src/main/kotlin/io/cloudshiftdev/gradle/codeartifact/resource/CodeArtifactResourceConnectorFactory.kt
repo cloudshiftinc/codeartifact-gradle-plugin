@@ -6,6 +6,7 @@ import io.cloudshiftdev.gradle.codeartifact.cacheKey
 import io.cloudshiftdev.gradle.codeartifact.internal.gradle.HttpErrorFactory
 import io.cloudshiftdev.gradle.codeartifact.toHttpsProtocolUrl
 import io.cloudshiftdev.gradle.codeartifact.token.TokenResolver
+import java.io.IOException
 import java.io.InputStream
 import java.net.URI
 import java.util.*
@@ -18,7 +19,6 @@ import okhttp3.Response
 import org.gradle.api.logging.Logging
 import org.gradle.api.resources.ResourceException
 import org.gradle.authentication.Authentication
-import org.gradle.internal.SystemProperties
 import org.gradle.internal.hash.HashCode
 import org.gradle.internal.resource.ExternalResource
 import org.gradle.internal.resource.ExternalResourceName
@@ -26,8 +26,7 @@ import org.gradle.internal.resource.ReadableContent
 import org.gradle.internal.resource.connector.ResourceConnectorFactory
 import org.gradle.internal.resource.connector.ResourceConnectorSpecification
 import org.gradle.internal.resource.metadata.ExternalResourceMetaData
-import org.gradle.internal.resource.transfer.AbstractExternalResourceAccessor
-import org.gradle.internal.resource.transfer.DefaultExternalResourceConnector
+import org.gradle.internal.resource.transfer.ExternalResourceAccessor
 import org.gradle.internal.resource.transfer.ExternalResourceConnector
 import org.gradle.internal.resource.transfer.ExternalResourceLister
 import org.gradle.internal.resource.transfer.ExternalResourceReadResponse
@@ -52,13 +51,27 @@ internal class CodeArtifactResourceConnectorFactory(
     ): ExternalResourceConnector {
         val accessor =
             CodeArtifactResourceAccessor(okHttpClient, proxyResolver, tokenResolver, httpErrors)
-        return DefaultExternalResourceConnector(
+        return CodeArtifactResourceConnector(
             accessor,
             CodeArtifactResourceLister(accessor),
             CodeArtifactResourceUploader,
         )
     }
 }
+
+/**
+ * Plain delegating connector; avoids linking against Gradle's concrete (internal)
+ * `DefaultExternalResourceConnector`, whose only addition is optional access statistics.
+ */
+private class CodeArtifactResourceConnector(
+    accessor: ExternalResourceAccessor,
+    lister: ExternalResourceLister,
+    uploader: ExternalResourceUploader,
+) :
+    ExternalResourceConnector,
+    ExternalResourceAccessor by accessor,
+    ExternalResourceLister by lister,
+    ExternalResourceUploader by uploader
 
 private fun request(block: Request.Builder.() -> Unit): Request {
     return Request.Builder().apply(block).build()
@@ -70,7 +83,7 @@ internal class CodeArtifactResourceAccessor(
     private val proxyResolver: ProxyResolver,
     private val tokenResolver: TokenResolver,
     private val httpErrors: HttpErrorFactory,
-) : AbstractExternalResourceAccessor() {
+) : ExternalResourceAccessor {
     private val logger = Logging.getLogger(CodeArtifactResourceAccessor::class.java)
 
     /**
@@ -86,7 +99,7 @@ internal class CodeArtifactResourceAccessor(
             val osVersion = System.getProperty("os.version")
             val osArch = System.getProperty("os.arch")
             val javaVendor = System.getProperty("java.vendor")
-            val javaVersion = SystemProperties.getInstance().javaVersion
+            val javaVersion = System.getProperty("java.version")
             val javaVendorVersion = System.getProperty("java.vm.version")
             UserAgent =
                 String.format(
@@ -102,7 +115,20 @@ internal class CodeArtifactResourceAccessor(
         }
     }
 
-    override fun openResource(
+    override fun <T : Any> withContent(
+        location: ExternalResourceName,
+        revalidate: Boolean,
+        action: ExternalResource.ContentAndMetadataAction<T>,
+    ): T? {
+        val response = openResource(location, revalidate) ?: return null
+        return try {
+            response.use { action.execute(it.openStream(), it.metaData) }
+        } catch (e: IOException) {
+            throw ResourceException(location.uri, "Could not get resource '${location.uri}'.", e)
+        }
+    }
+
+    fun openResource(
         location: ExternalResourceName,
         revalidate: Boolean,
     ): ExternalResourceReadResponse? {
@@ -286,9 +312,10 @@ private class CodeArtifactResourceLister(private val accessor: CodeArtifactResou
                     }
 
                     val contentType = metaData.contentType
-                    val parser = ApacheDirectoryListingParser()
                     try {
-                        return parser.parse(directory.uri, inputStream, contentType)
+                        return parseDirectoryListing(directory.uri, inputStream, contentType)
+                    } catch (e: ResourceException) {
+                        throw e
                     } catch (e: Exception) {
                         throw ResourceException(
                             directory.uri,
@@ -301,6 +328,38 @@ private class CodeArtifactResourceLister(private val accessor: CodeArtifactResou
         )
     }
 }
+
+/**
+ * Gradle's directory listing parser lives in a separate internal module (`resources-http`). It is
+ * only touched from [ApacheListing] so that, if it is missing or changed, the resulting
+ * [LinkageError] surfaces inside [parseDirectoryListing], which reports it clearly.
+ */
+private object ApacheListing {
+    fun parse(uri: URI, input: InputStream, contentType: String?): List<String> =
+        ApacheDirectoryListingParser().parse(uri, input, contentType)
+}
+
+/**
+ * Fails clearly when Gradle's parser can't be loaded. Returning `null` would tell Gradle the
+ * directory is missing, so a dynamic version would fail with a misleading "Could not find any
+ * matches" (and Gradle would cache that miss).
+ */
+private fun parseDirectoryListing(
+    uri: URI,
+    input: InputStream,
+    contentType: String?,
+): List<String> =
+    try {
+        ApacheListing.parse(uri, input, contentType)
+    } catch (e: LinkageError) {
+        throw ResourceException(
+            uri,
+            "Unable to list '$uri': Gradle's directory listing parser is unavailable in Gradle " +
+                "${GradleVersion.current().version}, so dynamic versions cannot be resolved from " +
+                "CodeArtifact. Use a fixed version, or check for a newer plugin release.",
+            e,
+        )
+    }
 
 /** Publishing uses the repository's https URL with token credentials, never `codeartifact://`. */
 private object CodeArtifactResourceUploader : ExternalResourceUploader {
