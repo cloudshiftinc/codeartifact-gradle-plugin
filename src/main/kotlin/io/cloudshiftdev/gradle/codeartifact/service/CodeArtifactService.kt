@@ -26,6 +26,7 @@ import io.cloudshiftdev.gradle.codeartifact.GenericPackage
 import io.cloudshiftdev.gradle.codeartifact.SystemVarResolver
 import io.cloudshiftdev.gradle.codeartifact.cacheKey
 import io.cloudshiftdev.gradle.codeartifact.queryParameters
+import io.cloudshiftdev.gradle.codeartifact.sha256
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.measureTime
@@ -40,6 +41,14 @@ internal interface CodeArtifactService {
 }
 
 internal class DefaultCodeArtifactService : CodeArtifactService {
+    companion object {
+        /**
+         * Process-wide instance; lives as long as the plugin classloader (e.g. across daemon
+         * builds).
+         */
+        val shared: DefaultCodeArtifactService by lazy { DefaultCodeArtifactService() }
+    }
+
     private val logger = Logging.getLogger(DefaultCodeArtifactService::class.java)
     private val clientFactory = CodeArtifactClientFactory()
 
@@ -119,20 +128,64 @@ private class CodeArtifactClientFactory() {
 
     private val clientCache = ConcurrentHashMap<String, CodeartifactClient>()
 
+    private val profileKey = "codeartifact.profile"
+    private val stsRoleArnKey = "codeartifact.stsRoleArn"
+
+    // shared across clients (and builds in the same daemon) to reuse connections
+    private val httpEngine by lazy { OkHttpEngine() }
+
     fun create(endpoint: CodeArtifactEndpoint): CodeartifactClient {
-        return clientCache.computeIfAbsent(endpoint.cacheKey) {
-            val httpEnginex = OkHttpEngine()
+        val profileName = profileName(endpoint.url.queryParameters())
+        val assumeRoleArn = systemVarResolver.resolve(stsRoleArnKey)
+
+        // runs on every use (not only at client creation): this factory outlives a single build,
+        // and the credentials file may change between builds in the same daemon.
+        removeStaticCredentialsIfRequested(profileName)
+
+        // include the credential configuration in the key, as it may change between builds in
+        // the same daemon; explicitly-configured keys are hashed so secrets aren't held as keys.
+        val explicitCredentials =
+            listOf(
+                    "codeartifact.accessKeyId",
+                    "codeartifact.secretAccessKey",
+                    "codeartifact.sessionToken",
+                )
+                .joinToString("|") { systemVarResolver.resolve(it).orEmpty() }
+                .sha256()
+        val key =
+            listOf(endpoint.cacheKey, profileName, assumeRoleArn, explicitCredentials)
+                .joinToString("|")
+        return clientCache.computeIfAbsent(key) {
             CodeartifactClient {
                 region = endpoint.region
                 credentialsProvider =
-                    buildCredentialsProvider(endpoint.url.queryParameters(), httpEnginex)
-                this.httpClient = httpEnginex
+                    buildCredentialsProvider(profileName, assumeRoleArn, httpEngine)
+                this.httpClient = httpEngine
             }
         }
     }
 
+    private fun removeStaticCredentialsIfRequested(profileName: String?) {
+        val ignoreStaticCreds =
+            systemVarResolver.resolve("codeartifact.ignoreStaticCredentials")?.toBoolean() ?: false
+        if (!ignoreStaticCreds || profileName == null) return
+
+        val helper = AwsCredentialsFileHelper()
+        if (helper.hasStaticCredentials(profileName)) {
+            logger.warn(
+                "Removing static credentials for profile '{}' from ~/.aws/credentials",
+                profileName,
+            )
+            helper.removeStaticCredentials(profileName)
+        }
+    }
+
+    private fun profileName(queryParameters: Map<String, String>): String? =
+        queryParameters[profileKey] ?: systemVarResolver.resolve(profileKey)
+
     private fun buildCredentialsProvider(
-        queryParameters: Map<String, String>,
+        profileName: String?,
+        assumeRoleArn: String?,
         httpEnginex: HttpClientEngine,
     ): CredentialsProvider {
         fun mask(value: String?): String? =
@@ -162,24 +215,6 @@ private class CodeArtifactClientFactory() {
         logger.debug("CodeArtifact System properties: {}", systemProperties)
         logger.debug("CodeArtifact Environment variables: {}", envVars)
 
-        val profileKey = "codeartifact.profile"
-        val profileName = queryParameters[profileKey] ?: systemVarResolver.resolve(profileKey)
-
-        val ignoreStaticCredsKey = "codeartifact.ignoreStaticCredentials"
-        val ignoreStaticCreds =
-            systemVarResolver.resolve(ignoreStaticCredsKey)?.toBoolean() ?: false
-
-        if (ignoreStaticCreds && profileName != null) {
-            val helper = AwsCredentialsFileHelper()
-            if (helper.hasStaticCredentials(profileName)) {
-                logger.warn(
-                    "Removing static credentials for profile '{}' from ~/.aws/credentials",
-                    profileName,
-                )
-                helper.removeStaticCredentials(profileName)
-            }
-        }
-
         val providers =
             listOfNotNull(
                 profileName?.let {
@@ -193,8 +228,6 @@ private class CodeArtifactClientFactory() {
             )
 
         val bootstrapProviders = CredentialsProviderChain(providers)
-        val stsRoleArnKey = "codeartifact.stsRoleArn"
-        val assumeRoleArn = systemVarResolver.resolve(stsRoleArnKey)
         logger.info("Assume role arn to get CodeArtifact token: {}", mask(assumeRoleArn))
         val provider =
             assumeRoleArn?.let { roleArn ->

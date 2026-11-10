@@ -90,6 +90,10 @@ limit role permissions to those required for CodeArtifact.
 | codeartifact.&lt;region>.proxy.base-url                               | CODEARTIFACT_&lt;REGION>_PROXY_BASE_URL                                | Proxy base URL to use                       |
 | codeartifact.proxy.base-url                                           | CODEARTIFACT_PROXY_BASE_URL                                            | Proxy base URL to use                       |
 | codeartifact.ignoreStaticCredentials                                  | CODEARTIFACT_IGNORE_STATIC_CREDENTIALS                                 | Remove static credentials from ~/.aws/credentials for the profile (default: false)          |
+| codeartifact.http.protocols                                           | CODEARTIFACT_HTTP_PROTOCOLS                                            | HTTP protocols to negotiate, e.g. `http/1.1` or `h2,http/1.1` (default: HTTP/2 with HTTP/1.1 fallback). `http/1.1` uses parallel connections rather than one multiplexed HTTP/2 connection, which may be faster for large artifacts |
+
+Dependency downloads honour Gradle's `org.gradle.internal.http.connectionTimeout` and `org.gradle.internal.http.socketTimeout`
+system properties (default 30s), and transient HTTP errors (5xx, 408, 429) are retried by Gradle with back-off.
 
 ## Reverse Proxy Configuration
 

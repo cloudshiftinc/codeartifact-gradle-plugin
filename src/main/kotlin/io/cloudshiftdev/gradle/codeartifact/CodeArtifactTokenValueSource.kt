@@ -1,6 +1,5 @@
 package io.cloudshiftdev.gradle.codeartifact
 
-import io.cloudshiftdev.gradle.codeartifact.service.DefaultCodeArtifactService
 import io.cloudshiftdev.gradle.codeartifact.token.DefaultTokenResolver
 import io.cloudshiftdev.gradle.codeartifact.token.TokenResolver
 import org.gradle.api.provider.Property
@@ -13,7 +12,7 @@ import org.gradle.kotlin.dsl.of
 
 internal abstract class CodeArtifactTokenValueSource :
     ValueSource<String, CodeArtifactTokenValueSource.Parameters> {
-    private val tokenResolver: TokenResolver = DefaultTokenResolver(DefaultCodeArtifactService())
+    private val tokenResolver: TokenResolver = DefaultTokenResolver.shared
 
     interface Parameters : ValueSourceParameters {
         val endpoint: Property<CodeArtifactEndpoint>

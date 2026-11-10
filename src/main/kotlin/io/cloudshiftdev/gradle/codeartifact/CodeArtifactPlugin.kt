@@ -2,15 +2,15 @@ package io.cloudshiftdev.gradle.codeartifact
 
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpointOrNull
+import io.cloudshiftdev.gradle.codeartifact.internal.gradle.DefaultGradleInternals
+import io.cloudshiftdev.gradle.codeartifact.internal.gradle.GradleInternals
+import io.cloudshiftdev.gradle.codeartifact.resource.CodeArtifactHttp
 import io.cloudshiftdev.gradle.codeartifact.resource.CodeArtifactResourceConnectorFactory
 import io.cloudshiftdev.gradle.codeartifact.service.DefaultCodeArtifactService
 import io.cloudshiftdev.gradle.codeartifact.task.PublishPackageVersion
 import io.cloudshiftdev.gradle.codeartifact.token.DefaultTokenResolver
 import io.cloudshiftdev.gradle.codeartifact.token.TokenResolver
 import javax.inject.Inject
-import okhttp3.OkHttpClient
-import okhttp3.brotli.BrotliInterceptor
-import okhttp3.logging.HttpLoggingInterceptor
 import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -19,7 +19,6 @@ import org.gradle.api.artifacts.repositories.ArtifactRepository
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.initialization.Settings
-import org.gradle.api.internal.GradleInternal
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.logging.Logging
@@ -31,7 +30,6 @@ import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.plugins.MavenPublishPlugin
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
-import org.gradle.internal.resource.connector.ResourceConnectorFactory
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.newInstance
@@ -41,6 +39,7 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     Plugin<PluginAware> {
     private val logger = Logging.getLogger(CodeArtifactPlugin::class.java)
     private val systemVarResolver = DefaultSystemVarResolver()
+    private val gradleInternals: GradleInternals = DefaultGradleInternals.instance
 
     override fun apply(target: PluginAware) {
         when (target) {
@@ -72,10 +71,16 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     )
 
     private fun initPlugin(gradle: Gradle): PluginContext {
-        val codeArtifactService = DefaultCodeArtifactService()
-        val tokenResolver = DefaultTokenResolver(codeArtifactService)
-        val transportFactory = (gradle as GradleInternal).services.get(transportFactoryClass)
-        addCodeArtifactResourceConnectorFactory(transportFactory, tokenResolver)
+        val codeArtifactService = DefaultCodeArtifactService.shared
+        val tokenResolver = DefaultTokenResolver.shared
+        gradleInternals.connectorRegistry(gradle).registerIfAbsent("codeartifact") {
+            CodeArtifactResourceConnectorFactory(
+                okHttpClient = CodeArtifactHttp.sharedClient(systemVarResolver),
+                proxyResolver = DefaultProxyResolver(systemVarResolver),
+                tokenResolver = tokenResolver,
+                httpErrors = gradleInternals.httpErrors,
+            )
+        }
         return PluginContext(tokenResolver, codeArtifactService)
     }
 
@@ -114,72 +119,6 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
 
         project.tasks.withType<PublishPackageVersion>().configureEach {
             service.set(ctx.codeArtifactService)
-        }
-    }
-
-    private fun addCodeArtifactResourceConnectorFactory(
-        transportFactory: Any,
-        tokenResolver: DefaultTokenResolver,
-    ) {
-        // Find the registeredProtocols field
-        val registeredProtocolsField = transportFactoryClass.getDeclaredField("registeredProtocols")
-
-        // Make the field accessible
-        registeredProtocolsField.isAccessible = true
-
-        @Suppress("UNCHECKED_CAST")
-        val connectorFactories =
-            registeredProtocolsField.get(transportFactory) as ArrayList<ResourceConnectorFactory>
-
-        if (connectorFactories.none { it.supportedProtocols.contains("codeartifact") }) {
-            val loggingInterceptor = HttpLoggingInterceptor(OkHttpLogger())
-            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.HEADERS)
-            loggingInterceptor.redactHeader("Authorization")
-
-            val httpClient =
-                OkHttpClient.Builder()
-                    .followRedirects(true)
-                    .followSslRedirects(false)
-                    .addNetworkInterceptor(loggingInterceptor)
-                    .addInterceptor(BrotliInterceptor)
-                    .build()
-
-            val proxyResolver = DefaultProxyResolver(systemVarResolver)
-
-            connectorFactories.add(
-                CodeArtifactResourceConnectorFactory(httpClient, proxyResolver, tokenResolver)
-            )
-        }
-    }
-
-    private class OkHttpLogger : HttpLoggingInterceptor.Logger {
-        private val logger = Logging.getLogger(OkHttpLogger::class.java)
-
-        override fun log(message: String) {
-            logger.debug(message)
-        }
-    }
-
-    private companion object {
-        /**
-         * Gradle's internal `RepositoryTransportFactory`, resolved by name because Gradle 9.9 moved
-         * it to a different package.
-         */
-        private val transportFactoryClass: Class<*> by lazy {
-            val candidates =
-                listOf(
-                    // Gradle 9.9+
-                    "org.gradle.internal.resource.transport.RepositoryTransportFactory",
-                    "org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransportFactory",
-                )
-            val classLoader = CodeArtifactPlugin::class.java.classLoader
-            candidates.firstNotNullOfOrNull {
-                try {
-                    Class.forName(it, false, classLoader)
-                } catch (_: ClassNotFoundException) {
-                    null
-                }
-            } ?: error("Unsupported Gradle version: RepositoryTransportFactory not found")
         }
     }
 
