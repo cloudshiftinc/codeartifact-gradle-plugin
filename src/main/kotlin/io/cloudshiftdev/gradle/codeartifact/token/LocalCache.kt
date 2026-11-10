@@ -96,7 +96,17 @@ internal class LocalCache(private val cacheDir: File) {
             endpoint.cacheKey,
             Duration.between(Instant.now(), token.expiration),
         )
-        store(token)
+        try {
+            store(token)
+        } catch (thrown: Exception) {
+            // the token is valid; failing to cache it (read-only/full disk, bad keyset) must not
+            // fail resolution
+            logger.warn(
+                "Unable to cache CodeArtifact token in {}: {}",
+                cacheFile,
+                thrown.message,
+            )
+        }
         return token
     }
 
@@ -111,8 +121,6 @@ internal class LocalCache(private val cacheDir: File) {
         )
 
         val tokenJson = mapper.writeValueAsString(token)
-        logger.debug("CodeArtifact token json: {}", tokenJson)
-
         val bytes = encrypt(tokenJson, token.endpoint.cacheKey)
         writeAtomically(cacheFile, bytes, replaceExisting = true)
     }
@@ -136,12 +144,31 @@ internal class LocalCache(private val cacheDir: File) {
             generateKeyset()
         }
 
-        return TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
-            keysetFile.readText(),
+        val keysetText = keysetFile.readText()
+        return try {
+            parseKeyset(keysetText)
+        } catch (thrown: Exception) {
+            // an unreadable keyset (corrupt, or from an incompatible version) would otherwise
+            // break every build until deleted by hand; tokens cached with it are unreadable anyway
+            logger.info(
+                "Unreadable CodeArtifact cache keyset {} (regenerating): {}",
+                keysetFile,
+                thrown.message,
+            )
+            // only delete the keyset we failed to parse: another thread/process may already have
+            // replaced it, and deleting that one would invalidate the tokens cached with it
+            if (keysetFile.exists() && keysetFile.readText() == keysetText) keysetFile.delete()
+            generateKeyset()
+            parseKeyset(keysetFile.readText())
+        }
+    }
+
+    private fun parseKeyset(keysetText: String): KeysetHandle =
+        TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
+            keysetText,
             masterKey.primitive(),
             noAssociatedData,
         )
-    }
 
     private fun generateKeyset() {
         val keyset = KeysetHandle.generateNew(PredefinedAeadParameters.AES128_GCM)

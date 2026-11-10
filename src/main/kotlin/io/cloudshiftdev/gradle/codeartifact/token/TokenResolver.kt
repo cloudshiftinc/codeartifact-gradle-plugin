@@ -9,15 +9,15 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import org.gradle.api.GradleException
 
-internal class DefaultTokenResolver(private val codeArtifactService: CodeArtifactService) :
-    TokenResolver {
+internal class DefaultTokenResolver(
+    private val codeArtifactService: CodeArtifactService,
+    cacheDir: File,
+) : TokenResolver {
     private val resolver =
         ErrorMessageTokenResolver(
             MemoryCacheTokenResolver(
                 PersistentCacheTokenResolver(
-                    cacheDir =
-                        File(System.getProperty("user.home"))
-                            .resolve(".gradle/caches/codeartifact"),
+                    cacheDir = cacheDir,
                     delegate = { codeArtifactService.getAuthorizationToken(it) },
                 )
             )
@@ -28,10 +28,31 @@ internal class DefaultTokenResolver(private val codeArtifactService: CodeArtifac
     }
 
     companion object {
-        /** Process-wide instance so the in-memory token cache survives across daemon builds. */
-        val shared: DefaultTokenResolver by lazy {
-            DefaultTokenResolver(DefaultCodeArtifactService.shared)
+        /**
+         * Process-wide instances, one per token cache directory, so the in-memory token cache
+         * survives across daemon builds while builds with different Gradle user homes stay apart.
+         */
+        private val byCacheDir = ConcurrentHashMap<File, DefaultTokenResolver>()
+
+        /**
+         * Resolver caching tokens under [gradleUserHome] (pass `gradle.gradleUserHomeDir`, which
+         * reflects `-g`/`--gradle-user-home`); when unknown, falls back to [defaultGradleUserHome].
+         */
+        fun forGradleUserHome(gradleUserHome: File?): DefaultTokenResolver {
+            val cacheDir =
+                (gradleUserHome ?: defaultGradleUserHome())
+                    .resolve("caches/codeartifact")
+                    .canonicalFile
+            return byCacheDir.computeIfAbsent(cacheDir) {
+                DefaultTokenResolver(DefaultCodeArtifactService.shared, it)
+            }
         }
+
+        /** Honours `-Dgradle.user.home` / `GRADLE_USER_HOME`; cannot see `-g`. */
+        private fun defaultGradleUserHome(): File =
+            (System.getProperty("gradle.user.home")?.takeIf(String::isNotBlank)
+                    ?: System.getenv("GRADLE_USER_HOME")?.takeIf(String::isNotBlank))
+                ?.let(::File) ?: File(System.getProperty("user.home"), ".gradle")
     }
 }
 
@@ -45,9 +66,7 @@ internal class ErrorMessageTokenResolver(private val delegate: TokenResolver) : 
             return delegate.resolve(endpoint)
         } catch (e: Exception) {
             val rootCause = e.rootCause
-            println(
-                "ERROR: failed to obtain CodeArtifact token for ${endpoint.cacheKey}: ${rootCause.message}"
-            )
+            // no separate logging: Gradle reports this exception (and its message) itself
             throw GradleException(
                 "Failed to obtain CodeArtifact token for ${endpoint.cacheKey}: ${rootCause.message}",
                 e,

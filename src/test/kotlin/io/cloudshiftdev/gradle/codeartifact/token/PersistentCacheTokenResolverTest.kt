@@ -28,6 +28,27 @@ class PersistentCacheTokenResolverTest : FunSpec() {
             coVerify(exactly = 1) { delegate.resolve(token.endpoint) }
         }
 
+        test("token is returned when the cache cannot be written") {
+            val token = codeArtifactToken()
+            // a regular file where the cache directory should be: every write fails
+            val notADir = tempdir().resolve("not-a-dir").apply { writeText("x") }
+            val cache = PersistentCacheTokenResolver({ token }, notADir)
+
+            cache.resolve(token.endpoint) shouldBe token
+        }
+
+        test("an unreadable keyset is regenerated") {
+            val token = codeArtifactToken()
+            val dir = tempdir()
+            dir.resolve("codeartifact.keyset.json").writeText("garbage")
+            val calls = AtomicInteger()
+            val cache = PersistentCacheTokenResolver({ calls.incrementAndGet().let { token } }, dir)
+
+            cache.resolve(token.endpoint) shouldBe token
+            cache.resolve(token.endpoint) shouldBe token
+            calls.get() shouldBe 1
+        }
+
         test("cache returns new token when expired") {
             val token = codeArtifactToken()
             val expiredToken = codeArtifactToken(expired = true)

@@ -6,10 +6,8 @@ import io.cloudshiftdev.gradle.codeartifact.internal.gradle.DefaultGradleInterna
 import io.cloudshiftdev.gradle.codeartifact.internal.gradle.GradleInternals
 import io.cloudshiftdev.gradle.codeartifact.resource.CodeArtifactHttp
 import io.cloudshiftdev.gradle.codeartifact.resource.CodeArtifactResourceConnectorFactory
-import io.cloudshiftdev.gradle.codeartifact.service.DefaultCodeArtifactService
-import io.cloudshiftdev.gradle.codeartifact.task.PublishPackageVersion
 import io.cloudshiftdev.gradle.codeartifact.token.DefaultTokenResolver
-import io.cloudshiftdev.gradle.codeartifact.token.TokenResolver
+import java.io.File
 import javax.inject.Inject
 import org.gradle.api.Action
 import org.gradle.api.Plugin
@@ -65,14 +63,8 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
         }
     }
 
-    private data class PluginContext(
-        val tokenResolver: TokenResolver,
-        val codeArtifactService: DefaultCodeArtifactService,
-    )
-
-    private fun initPlugin(gradle: Gradle): PluginContext {
-        val codeArtifactService = DefaultCodeArtifactService.shared
-        val tokenResolver = DefaultTokenResolver.shared
+    private fun initPlugin(gradle: Gradle) {
+        val tokenResolver = DefaultTokenResolver.forGradleUserHome(gradle.gradleUserHomeDir)
         gradleInternals.connectorRegistry(gradle).registerIfAbsent("codeartifact") {
             CodeArtifactResourceConnectorFactory(
                 okHttpClient = CodeArtifactHttp.sharedClient(systemVarResolver),
@@ -81,7 +73,6 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
                 httpErrors = gradleInternals.httpErrors,
             )
         }
-        return PluginContext(tokenResolver, codeArtifactService)
     }
 
     private fun applyToSettings(settings: Settings) {
@@ -94,16 +85,17 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
             configureForCodeArtifact(RepositoryMode.Resolve, settings.providers)
         }
 
-        settings.gradle.beforeProject {
-            buildscript.repositories.all {
-                configureForCodeArtifact(RepositoryMode.Resolve, settings.providers)
-            }
-            pluginManager.apply(CodeArtifactPlugin::class)
-        }
+        // isolated (Isolated Projects-safe) action: captures nothing; applying the plugin to each
+        // project configures that project's own repositories, including its buildscript ones
+        settings.gradle.lifecycle.beforeProject { pluginManager.apply(CodeArtifactPlugin::class) }
     }
 
     private fun applyToProject(project: Project) {
-        val ctx = initPlugin(project.gradle)
+        initPlugin(project.gradle)
+
+        project.buildscript.repositories.all {
+            configureForCodeArtifact(RepositoryMode.Resolve, project.providers)
+        }
 
         project.repositories.all {
             configureForCodeArtifact(RepositoryMode.Resolve, project.providers)
@@ -112,20 +104,19 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
         project.plugins.withType<MavenPublishPlugin> {
             project.configure<PublishingExtension> {
                 repositories.all {
-                    configureForCodeArtifact(RepositoryMode.Publish, project.providers)
+                    configureForCodeArtifact(
+                        RepositoryMode.Publish(project.gradle.gradleUserHomeDir),
+                        project.providers,
+                    )
                 }
             }
-        }
-
-        project.tasks.withType<PublishPackageVersion>().configureEach {
-            service.set(ctx.codeArtifactService)
         }
     }
 
     private sealed class RepositoryMode {
         data object Resolve : RepositoryMode()
 
-        data object Publish : RepositoryMode()
+        data class Publish(val gradleUserHome: File) : RepositoryMode()
     }
 
     private fun ArtifactRepository.configureForCodeArtifact(
@@ -144,7 +135,9 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
                 "Configuring CodeArtifact publishing repository authentication: ${endpoint.url}"
             )
 
-            repository.setConfiguredCredentials(createRepoCredentials(providers, endpoint))
+            repository.setConfiguredCredentials(
+                createRepoCredentials(providers, endpoint, repositoryMode.gradleUserHome)
+            )
             return
         }
 
@@ -158,10 +151,11 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     private fun createRepoCredentials(
         providers: ProviderFactory,
         endpoint: CodeArtifactEndpoint,
+        gradleUserHome: File,
     ): PasswordCredentials {
         val credentials = objects.newInstance<RepositoryCredentials>()
         credentials.usernameProp.set("aws")
-        credentials.passwordProp.set(providers.codeArtifactToken(endpoint))
+        credentials.passwordProp.set(providers.codeArtifactToken(endpoint, gradleUserHome))
         return credentials
     }
 }

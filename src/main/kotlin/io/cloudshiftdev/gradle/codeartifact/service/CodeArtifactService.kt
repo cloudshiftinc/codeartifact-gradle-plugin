@@ -65,7 +65,7 @@ internal class DefaultCodeArtifactService : CodeArtifactService {
                     CodeArtifactToken(
                         endpoint = endpoint,
                         value = it.authorizationToken!!,
-                        expiration = it.expiration?.toJvmInstant()!!,
+                        expiration = it.expiration!!.toJvmInstant(),
                     )
                 }
         }
@@ -145,12 +145,10 @@ private class CodeArtifactClientFactory() {
         // include the credential configuration in the key, as it may change between builds in
         // the same daemon; explicitly-configured keys are hashed so secrets aren't held as keys.
         val explicitCredentials =
-            listOf(
-                    "codeartifact.accessKeyId",
-                    "codeartifact.secretAccessKey",
-                    "codeartifact.sessionToken",
-                )
-                .joinToString("|") { systemVarResolver.resolve(it).orEmpty() }
+            systemVarResolver
+                .explicitCredentials()
+                .let { listOf(it.prefix, it.accessKeyId, it.secretAccessKey, it.sessionToken) }
+                .joinToString("|") { it.orEmpty() }
                 .sha256()
         val key =
             listOf(endpoint.cacheKey, profileName, assumeRoleArn, explicitCredentials)
@@ -186,7 +184,7 @@ private class CodeArtifactClientFactory() {
     private fun buildCredentialsProvider(
         profileName: String?,
         assumeRoleArn: String?,
-        httpEnginex: HttpClientEngine,
+        httpEngine: HttpClientEngine,
     ): CredentialsProvider {
         fun mask(value: String?): String? =
             when {
@@ -233,7 +231,7 @@ private class CodeArtifactClientFactory() {
             assumeRoleArn?.let { roleArn ->
                 StsAssumeRoleCredentialsProvider(
                     bootstrapCredentialsProvider = bootstrapProviders,
-                    httpClient = httpEnginex,
+                    httpClient = httpEngine,
                     assumeRoleParameters =
                         AssumeRoleParameters(
                             roleArn = roleArn,
@@ -271,18 +269,44 @@ private class CodeArtifactClientFactory() {
     private class CodeArtifactEnvironmentCredentialsProvider(
         private val systemVarResolver: SystemVarResolver
     ) : CredentialsProvider {
-        private fun requireEnv(variable: String): String =
-            systemVarResolver.resolve(variable)
-                ?: throw ProviderConfigurationException(
-                    "Missing value for environment variable `$variable`"
-                )
-
         override suspend fun resolve(attributes: Attributes): Credentials {
+            val explicit = systemVarResolver.explicitCredentials()
+            fun missing(name: String): Nothing =
+                throw ProviderConfigurationException(
+                    "Missing value for ${explicit.prefix ?: CREDENTIAL_PREFIXES.first()}$name"
+                )
             return Credentials.Companion(
-                accessKeyId = requireEnv("codeartifact.accessKeyId"),
-                secretAccessKey = requireEnv("codeartifact.secretAccessKey"),
-                sessionToken = systemVarResolver.resolve("codeartifact.sessionToken"),
+                accessKeyId = explicit.accessKeyId ?: missing("accessKeyId"),
+                secretAccessKey = explicit.secretAccessKey ?: missing("secretAccessKey"),
+                sessionToken = explicit.sessionToken,
             )
         }
+    }
+
+    private class ExplicitCredentials(
+        val prefix: String?,
+        val accessKeyId: String?,
+        val secretAccessKey: String?,
+        val sessionToken: String?,
+    )
+
+    private companion object {
+        // `codeartifact.aws.*` is the documented form; `codeartifact.*` is kept for compatibility.
+        val CREDENTIAL_PREFIXES = listOf("codeartifact.aws.", "codeartifact.")
+
+        /**
+         * Resolves the three values from a single prefix (the first one with any value set), so a
+         * session token left over under one prefix is never paired with keys from the other.
+         */
+        fun SystemVarResolver.explicitCredentials(): ExplicitCredentials =
+            CREDENTIAL_PREFIXES.firstNotNullOfOrNull { prefix ->
+                ExplicitCredentials(
+                        prefix,
+                        resolve("${prefix}accessKeyId"),
+                        resolve("${prefix}secretAccessKey"),
+                        resolve("${prefix}sessionToken"),
+                    )
+                    .takeIf { it.accessKeyId != null || it.secretAccessKey != null }
+            } ?: ExplicitCredentials(null, null, null, null)
     }
 }
