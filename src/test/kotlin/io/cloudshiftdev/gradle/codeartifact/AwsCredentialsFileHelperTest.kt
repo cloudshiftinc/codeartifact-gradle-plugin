@@ -132,12 +132,12 @@ class AwsCredentialsFileHelperTest : FunSpec() {
             val content = credentialsFile.toFile().readText()
             content shouldBe
                 """
-                    [default]
-                    region = us-east-1
+                [default]
+                region = us-east-1
 
-                    [other-profile]
-                    aws_access_key_id = AKIAIOSFODNN7OTHER
-                    aws_secret_access_key = otherSecretKey
+                [other-profile]
+                aws_access_key_id = AKIAIOSFODNN7OTHER
+                aws_secret_access_key = otherSecretKey
                 """
                     .trimIndent()
 

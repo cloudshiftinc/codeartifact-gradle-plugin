@@ -80,19 +80,20 @@ spotless {
 
 internal fun Project.ktfmtVersion(): String {
     val resourceUri = this::class.java.getResource("/codeartifact-plugin/ktfmt-version.txt")
-    return resourceUri?.let { resources.text.fromUri(it).asString() } ?: "0.58"
+    return resourceUri?.let { resources.text.fromUri(it).asString() } ?: "0.64"
 }
 
 tasks {
-    val persistKtfmtVersion by registering {
-        inputs.property("ktfmtVersion", libs.ktfmt)
-        outputs.files(layout.buildDirectory.file("ktfmt-version.txt"))
-        doLast {
-            outputs.files.singleFile.writeText(
-                inputs.properties["ktfmtVersion"].toString().substringAfterLast(":")
-            )
+    val persistKtfmtVersion =
+        register("persistKtfmtVersion") {
+            inputs.property("ktfmtVersion", libs.ktfmt)
+            outputs.files(layout.buildDirectory.file("ktfmt-version.txt"))
+            doLast {
+                outputs.files.singleFile.writeText(
+                    inputs.properties["ktfmtVersion"].toString().substringAfterLast(":")
+                )
+            }
         }
-    }
 
     named<ProcessResources>("processResources") {
         from(persistKtfmtVersion) { into("codeartifact-plugin") }
@@ -121,39 +122,38 @@ tasks {
 
 testing {
     suites {
-        val test by
-            getting(JvmTestSuite::class) {
-                useJUnitJupiter()
-                dependencies {
-                    implementation(platform(libs.kotest.bom))
-                    implementation(libs.kotest.assertions.core)
-                    implementation(libs.kotest.assertions.json)
-                    implementation(libs.kotest.property)
-                    implementation(libs.kotest.runner.junit5)
-                    implementation(libs.mockk)
-                    implementation(libs.okhttp.mockwebserver)
-                }
-                targets {
-                    all {
-                        testTask.configure {
-                            outputs.upToDateWhen { false }
-                            testLogging {
-                                events =
-                                    setOf(
-                                        TestLogEvent.FAILED,
-                                        TestLogEvent.PASSED,
-                                        TestLogEvent.SKIPPED,
-                                        TestLogEvent.STANDARD_OUT,
-                                        TestLogEvent.STANDARD_ERROR,
-                                    )
-                                exceptionFormat = TestExceptionFormat.FULL
-                                showExceptions = true
-                                showCauses = true
-                                showStackTraces = true
-                            }
+        named<JvmTestSuite>("test") {
+            useJUnitJupiter()
+            dependencies {
+                implementation(platform(libs.kotest.bom))
+                implementation(libs.kotest.assertions.core)
+                implementation(libs.kotest.assertions.json)
+                implementation(libs.kotest.property)
+                implementation(libs.kotest.runner.junit5)
+                implementation(libs.mockk)
+                implementation(libs.okhttp.mockwebserver)
+            }
+            targets {
+                all {
+                    testTask.configure {
+                        outputs.upToDateWhen { false }
+                        testLogging {
+                            events =
+                                setOf(
+                                    TestLogEvent.FAILED,
+                                    TestLogEvent.PASSED,
+                                    TestLogEvent.SKIPPED,
+                                    TestLogEvent.STANDARD_OUT,
+                                    TestLogEvent.STANDARD_ERROR,
+                                )
+                            exceptionFormat = TestExceptionFormat.FULL
+                            showExceptions = true
+                            showCauses = true
+                            showStackTraces = true
                         }
                     }
                 }
             }
+        }
     }
 }
