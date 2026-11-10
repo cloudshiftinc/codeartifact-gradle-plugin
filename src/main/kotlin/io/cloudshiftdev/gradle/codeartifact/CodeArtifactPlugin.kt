@@ -19,8 +19,8 @@ import org.gradle.api.artifacts.repositories.ArtifactRepository
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.initialization.Settings
+import org.gradle.api.internal.GradleInternal
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
-import org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransportFactory
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.logging.Logging
 import org.gradle.api.model.ObjectFactory
@@ -35,7 +35,6 @@ import org.gradle.internal.resource.connector.ResourceConnectorFactory
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.newInstance
-import org.gradle.kotlin.dsl.support.serviceOf
 import org.gradle.kotlin.dsl.withType
 
 public abstract class CodeArtifactPlugin @Inject constructor(private val objects: ObjectFactory) :
@@ -75,8 +74,8 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
     private fun initPlugin(gradle: Gradle): PluginContext {
         val codeArtifactService = DefaultCodeArtifactService()
         val tokenResolver = DefaultTokenResolver(codeArtifactService)
-        val transportFactory = gradle.serviceOf<RepositoryTransportFactory>()
-        transportFactory.addCodeArtifactResourceConnectorFactory(tokenResolver)
+        val transportFactory = (gradle as GradleInternal).services.get(transportFactoryClass)
+        addCodeArtifactResourceConnectorFactory(transportFactory, tokenResolver)
         return PluginContext(tokenResolver, codeArtifactService)
     }
 
@@ -118,21 +117,19 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
         }
     }
 
-    private fun RepositoryTransportFactory.addCodeArtifactResourceConnectorFactory(
-        tokenResolver: DefaultTokenResolver
+    private fun addCodeArtifactResourceConnectorFactory(
+        transportFactory: Any,
+        tokenResolver: DefaultTokenResolver,
     ) {
-        // Get the class of the transport factory
-        val factoryClass = this::class.java
-
         // Find the registeredProtocols field
-        val registeredProtocolsField = factoryClass.getDeclaredField("registeredProtocols")
+        val registeredProtocolsField = transportFactoryClass.getDeclaredField("registeredProtocols")
 
         // Make the field accessible
         registeredProtocolsField.isAccessible = true
 
         @Suppress("UNCHECKED_CAST")
         val connectorFactories =
-            registeredProtocolsField.get(this) as ArrayList<ResourceConnectorFactory>
+            registeredProtocolsField.get(transportFactory) as ArrayList<ResourceConnectorFactory>
 
         if (connectorFactories.none { it.supportedProtocols.contains("codeartifact") }) {
             val loggingInterceptor = HttpLoggingInterceptor(OkHttpLogger())
@@ -160,6 +157,29 @@ public abstract class CodeArtifactPlugin @Inject constructor(private val objects
 
         override fun log(message: String) {
             logger.debug(message)
+        }
+    }
+
+    private companion object {
+        /**
+         * Gradle's internal `RepositoryTransportFactory`, resolved by name because Gradle 9.9 moved
+         * it to a different package.
+         */
+        private val transportFactoryClass: Class<*> by lazy {
+            val candidates =
+                listOf(
+                    // Gradle 9.9+
+                    "org.gradle.internal.resource.transport.RepositoryTransportFactory",
+                    "org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransportFactory",
+                )
+            val classLoader = CodeArtifactPlugin::class.java.classLoader
+            candidates.firstNotNullOfOrNull {
+                try {
+                    Class.forName(it, false, classLoader)
+                } catch (_: ClassNotFoundException) {
+                    null
+                }
+            } ?: error("Unsupported Gradle version: RepositoryTransportFactory not found")
         }
     }
 
