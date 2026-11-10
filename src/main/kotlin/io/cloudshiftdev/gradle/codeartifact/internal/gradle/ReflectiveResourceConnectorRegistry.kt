@@ -1,5 +1,9 @@
 package io.cloudshiftdev.gradle.codeartifact.internal.gradle
 
+import java.lang.reflect.Field
+import java.lang.reflect.Method
+import java.lang.reflect.Modifier
+import org.gradle.api.invocation.Gradle
 import org.gradle.internal.resource.connector.ResourceConnectorFactory
 
 /**
@@ -7,24 +11,18 @@ import org.gradle.internal.resource.connector.ResourceConnectorFactory
  * private `registeredProtocols` list.
  */
 internal class ReflectiveResourceConnectorRegistry(
-    private val transportFactoryClass: Class<*>,
-    private val transportFactory: Any,
+    private val connectorFactories: MutableList<ResourceConnectorFactory>
 ) : ResourceConnectorRegistry {
 
     override fun registerIfAbsent(protocol: String, factory: () -> ResourceConnectorFactory) {
-        val connectorFactories = registeredProtocols()
         synchronized(connectorFactories) {
             if (connectorFactories.none { it.supportedProtocols.contains(protocol) }) {
-                connectorFactories.add(factory())
+                val connectorFactory = factory()
+                guarded("register the '$protocol' transport") {
+                    connectorFactories.add(connectorFactory)
+                }
             }
         }
-    }
-
-    private fun registeredProtocols(): MutableList<ResourceConnectorFactory> {
-        val field = transportFactoryClass.getDeclaredField("registeredProtocols")
-        field.isAccessible = true
-        @Suppress("UNCHECKED_CAST")
-        return field.get(transportFactory) as MutableList<ResourceConnectorFactory>
     }
 
     companion object {
@@ -41,8 +39,60 @@ internal class ReflectiveResourceConnectorRegistry(
 
         fun resolveTransportFactoryClass(classLoader: ClassLoader): Class<*> =
             transportFactoryClassNames.firstNotNullOfOrNull { loadClassOrNull(it, classLoader) }
-                ?: error("Unsupported Gradle version: RepositoryTransportFactory not found")
+                ?: throw UnsupportedGradleInternalsException(
+                    "locate RepositoryTransportFactory",
+                    ClassNotFoundException(transportFactoryClassNames.joinToString()),
+                )
+
+        /**
+         * Resolves (and validates) everything needed once; the returned function only does the
+         * per-build service lookup.
+         */
+        fun factory(classLoader: ClassLoader): (Gradle) -> ResourceConnectorRegistry {
+            val transportFactoryClass = resolveTransportFactoryClass(classLoader)
+            val field = registeredProtocolsField(transportFactoryClass)
+            val services = ServiceLookup(classLoader)
+            return { gradle ->
+                val transportFactory = services.get(gradle, transportFactoryClass)
+                @Suppress("UNCHECKED_CAST")
+                val list = field.get(transportFactory) as MutableList<ResourceConnectorFactory>
+                ReflectiveResourceConnectorRegistry(list)
+            }
+        }
+
+        private fun registeredProtocolsField(transportFactoryClass: Class<*>): Field {
+            val field = transportFactoryClass.getDeclaredField("registeredProtocols")
+            if (
+                !MutableList::class.java.isAssignableFrom(field.type) ||
+                    Modifier.isStatic(field.modifiers)
+            ) {
+                throw UnsupportedGradleInternalsException(
+                    "use RepositoryTransportFactory.registeredProtocols",
+                    IllegalStateException("unexpected field: $field"),
+                )
+            }
+            field.isAccessible = true
+            return field
+        }
     }
+}
+
+/**
+ * Looks up a build service via `GradleInternal.getServices().get(Class)` reflectively, so that a
+ * change to either internal type surfaces as a clear error rather than a linkage error.
+ */
+private class ServiceLookup(classLoader: ClassLoader) {
+    private val getServices: Method =
+        Class.forName("org.gradle.api.internal.GradleInternal", false, classLoader)
+            .getMethod("getServices")
+    private val get: Method = getServices.returnType.getMethod("get", Class::class.java)
+
+    fun get(gradle: Gradle, serviceType: Class<*>): Any =
+        get.invoke(getServices.invoke(gradle), serviceType)
+            ?: throw UnsupportedGradleInternalsException(
+                "obtain ${serviceType.simpleName}",
+                IllegalStateException("service not registered"),
+            )
 }
 
 internal fun loadClassOrNull(name: String, classLoader: ClassLoader): Class<*>? =

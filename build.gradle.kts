@@ -95,14 +95,53 @@ spotless {
 }
 
 tasks {
+    named("check") { dependsOn(testing.suites.named("functionalTest")) }
+
     withType<ValidatePlugins>().configureEach {
         enableStricterValidation = true
         failOnWarning = true
     }
 }
 
+// Gradle versions the functional tests run against; each exercises a different combination of the
+// Gradle internals this plugin adapts to (see internal/gradle). Override with
+// -PfunctionalTestGradleVersions=9.0.0,9.9.1
+val functionalTestGradleVersions =
+    providers.gradleProperty("functionalTestGradleVersions").orElse("9.0.0,9.2.1,9.8.2,9.9.1")
+
 testing {
     suites {
+        register<JvmTestSuite>("functionalTest") {
+            useJUnitJupiter()
+            dependencies {
+                implementation(gradleTestKit())
+                implementation(platform(libs.kotest.bom))
+                implementation(libs.kotest.assertions.core)
+                implementation(libs.kotest.runner.junit5)
+                implementation(libs.okhttp.mockwebserver)
+            }
+            targets {
+                all {
+                    testTask.configure {
+                        shouldRunAfter(tasks.named("test"))
+                        systemProperty(
+                            "functionalTest.gradleVersions",
+                            functionalTestGradleVersions.get(),
+                        )
+                        // stable (survives `clean`) so Gradle distributions are downloaded once
+                        systemProperty(
+                            "functionalTest.testKitDir",
+                            layout.projectDirectory.dir(".gradle/testkit").asFile.absolutePath,
+                        )
+                        testLogging {
+                            events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED)
+                            exceptionFormat = TestExceptionFormat.FULL
+                        }
+                    }
+                }
+            }
+        }
+
         named<JvmTestSuite>("test") {
             useJUnitJupiter()
             dependencies {
@@ -136,4 +175,12 @@ testing {
             }
         }
     }
+}
+
+// Inject the plugin under test into TestKit builds, and let the functional tests use internal
+// classes (e.g. to seed the token cache).
+gradlePlugin { testSourceSets(sourceSets["test"], sourceSets["functionalTest"]) }
+
+kotlin.target.compilations.named("functionalTest") {
+    associateWith(kotlin.target.compilations.getByName("main"))
 }
