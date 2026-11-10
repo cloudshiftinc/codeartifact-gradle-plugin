@@ -256,6 +256,28 @@ class CodeArtifactResourceAccessorTest :
                 }
             }
         }
+
+        test("proxy base URL path prefix is preserved") {
+            withMockWebServer { server, httpClient ->
+                val token =
+                    codeArtifactToken(endpoint = codeArtifactEndpoint(scheme = "codeartifact"))
+                val accessor =
+                    CodeArtifactResourceAccessor(
+                        httpClient,
+                        proxyResolver = { URI("https://cdn.example.com/prefix/") },
+                        tokenResolver = { token },
+                        httpErrors = httpErrors,
+                    )
+                server.enqueue(MockResponse().newBuilder().body("ok").build())
+
+                val url = token.endpoint.withPath("test/a b.jar")
+                accessor.withContent(url.toExternalResourceName(), false) { _, _ -> }
+
+                val req = server.takeRequest()
+                req.headers["X-Original-Url"] shouldBe
+                    "https://cdn.example.com/prefix/maven/env-data/test/a%20b.jar"
+            }
+        }
     })
 
 private val httpErrors = DefaultGradleInternals().httpErrors

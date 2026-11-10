@@ -202,7 +202,13 @@ export class Cdn extends Construct {
 
 ## Obtaining CodeArtifact tokens for other (non-Maven repository) uses
 
-If you wish to use CodeArtifact tokens elsewhere, for example configuring `.npmrc` for CodeArtifact npm repositories, you can obtain a token provider using `ProviderFactory.codeArtifactToken(endpoint)`.
+If you wish to use CodeArtifact tokens elsewhere, for example configuring `.npmrc` for CodeArtifact npm repositories, you can obtain a token provider using `ProviderFactory.codeArtifactToken(endpoint, gradle)`:
+
+```kotlin
+val token = providers.codeArtifactToken("https://<domain>-<owner>.d.codeartifact.<region>.amazonaws.com/npm/<repository>".toCodeArtifactEndpoint(), gradle)
+```
+
+Passing `gradle` caches the token under the build's Gradle user home, honouring `-g`/`--gradle-user-home`; the `codeArtifactToken(endpoint)` overload only sees `GRADLE_USER_HOME` / `-Dgradle.user.home`.
 
 ## Advanced use
 

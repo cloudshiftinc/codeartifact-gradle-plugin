@@ -55,7 +55,7 @@ internal class CodeArtifactResourceConnectorFactory(
         return DefaultExternalResourceConnector(
             accessor,
             CodeArtifactResourceLister(accessor),
-            CodeArtifactResourceUploader(okHttpClient),
+            CodeArtifactResourceUploader,
         )
     }
 }
@@ -162,7 +162,8 @@ internal class CodeArtifactResourceAccessor(
                     Optional.ofNullable(proxyResolver.resolve(endpoint))
                 }
                 .orElse(null)
-        val rawUrl = proxyBaseUrl?.resolve(location.uri.path) ?: location.uri.toHttpsProtocolUrl()
+        val rawUrl =
+            proxyBaseUrl?.let { proxyUrl(it, location.uri) } ?: location.uri.toHttpsProtocolUrl()
 
         val url = rawUrl.toHttpUrlOrNull() ?: error("Invalid URL: $rawUrl")
 
@@ -176,6 +177,19 @@ internal class CodeArtifactResourceAccessor(
         }
         return Pair(url, request)
     }
+
+    /**
+     * Appends the resource's (still-encoded) path to [proxyBaseUrl], keeping any path prefix of the
+     * base URL (and any query); `URI.resolve` with an absolute path would replace that prefix.
+     */
+    private fun proxyUrl(proxyBaseUrl: URI, resource: URI): URI =
+        URI(
+            "${proxyBaseUrl.scheme}://${proxyBaseUrl.rawAuthority}" +
+                proxyBaseUrl.rawPath.orEmpty().trimEnd('/') +
+                "/" +
+                resource.rawPath.trimStart('/') +
+                (proxyBaseUrl.rawQuery?.let { "?$it" } ?: "")
+        )
 
     /**
      * Executes [request]. A 404 is returned (closed) for the caller to report as missing; any other
@@ -288,9 +302,12 @@ private class CodeArtifactResourceLister(private val accessor: CodeArtifactResou
     }
 }
 
-private class CodeArtifactResourceUploader(private val okHttpClient: OkHttpClient) :
-    ExternalResourceUploader {
+/** Publishing uses the repository's https URL with token credentials, never `codeartifact://`. */
+private object CodeArtifactResourceUploader : ExternalResourceUploader {
     override fun upload(resource: ReadableContent, destination: ExternalResourceName) {
-        TODO("Not yet implemented")
+        throw UnsupportedOperationException(
+            "Publishing to a codeartifact:// URL is not supported (${destination.uri}); " +
+                "use the repository's https:// URL in publishing { repositories { ... } }"
+        )
     }
 }

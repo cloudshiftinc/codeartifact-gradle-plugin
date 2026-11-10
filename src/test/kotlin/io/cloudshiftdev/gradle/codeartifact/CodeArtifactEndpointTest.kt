@@ -54,6 +54,34 @@ class CodeArtifactEndpointTest : FunSpec() {
             endpoint.type.shouldBe("npm")
         }
 
+        test("domain containing a hyphen followed by digits parses correctly") {
+            val endpoint =
+                "https://team-2024-123456789012.d.codeartifact.us-west-2.amazonaws.com/maven/repo"
+                    .toCodeArtifactEndpoint()
+            endpoint.domain.shouldBe("team-2024")
+            endpoint.domainOwner.shouldBe("123456789012")
+            endpoint.region.shouldBe("us-west-2")
+            endpoint.repository.shouldBe("repo")
+        }
+
+        test("resource URL parses to the repository, not the artifact path") {
+            val endpoint =
+                "codeartifact://mydomain-123456789012.d.codeartifact.us-east-1.amazonaws.com/maven/release/com/acme/x/1.0/x-1.0.pom?codeartifact.profile=dev"
+                    .toCodeArtifactEndpoint()
+            endpoint.type.shouldBe("maven")
+            endpoint.repository.shouldBe("release")
+            endpoint.url.queryParameters().shouldBe(mapOf("codeartifact.profile" to "dev"))
+        }
+
+        test("non-CodeArtifact URLs are rejected") {
+            listOf(
+                    "https://repo.maven.apache.org/maven2",
+                    "https://mydomain-12345.d.codeartifact.us-east-1.amazonaws.com/maven/release",
+                    "https://mydomain-123456789012XdXcodeartifact.us-east-1.amazonaws.com/maven/r",
+                )
+                .forEach { it.toCodeArtifactEndpointOrNull().shouldBe(null) }
+        }
+
         test("codeartifact protocol works") {
             val endpoint =
                 "codeartifact://my_domain-111122223333.d.codeartifact.us-west-2.amazonaws.com/npm/my_repo/"

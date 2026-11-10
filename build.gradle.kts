@@ -29,7 +29,7 @@ dependencies {
 
     implementation(libs.pearx.kasechange)
 
-    implementation("aws.smithy.kotlin:http-client-engine-okhttp")
+    implementation(libs.aws.smithy.kotlin.http.client.engine.okhttp)
 }
 
 java { consistentResolution { useCompileClasspathVersions() } }
@@ -55,7 +55,8 @@ gradlePlugin {
         create("codeartifact") {
             id = "io.cloudshiftdev.codeartifact"
             displayName = "Plugin providing CodeArtifact repositories support"
-            description = "Settings plugin providing CodeArtifact repositories support"
+            description =
+                "Settings, project and init-script plugin providing CodeArtifact repositories support"
             implementationClass = "io.cloudshiftdev.gradle.codeartifact.CodeArtifactPlugin"
             tags = listOf("codeartifact", "aws", "repository")
         }
@@ -63,9 +64,10 @@ gradlePlugin {
 }
 
 signing {
-    val signingKey = findProperty("SIGNING_KEY") as? String
-    val signingPwd = findProperty("SIGNING_PWD") as? String
-    useInMemoryPgpKeys(signingKey, signingPwd)
+    useInMemoryPgpKeys(
+        providers.gradleProperty("SIGNING_KEY").orNull,
+        providers.gradleProperty("SIGNING_PWD").orNull,
+    )
 }
 
 kotlin {
@@ -82,7 +84,7 @@ kotlin {
     }
 }
 
-val ktfmtVersion = ktfmtVersion()
+val ktfmtVersion = libs.versions.ktfmt.get()
 
 spotless {
     encoding = StandardCharsets.UTF_8
@@ -92,27 +94,7 @@ spotless {
     kotlin { ktfmt(ktfmtVersion).kotlinlangStyle() }
 }
 
-internal fun Project.ktfmtVersion(): String {
-    val resourceUri = this::class.java.getResource("/codeartifact-plugin/ktfmt-version.txt")
-    return resourceUri?.let { resources.text.fromUri(it).asString() } ?: "0.64"
-}
-
 tasks {
-    val persistKtfmtVersion =
-        register("persistKtfmtVersion") {
-            inputs.property("ktfmtVersion", libs.ktfmt)
-            outputs.files(layout.buildDirectory.file("ktfmt-version.txt"))
-            doLast {
-                outputs.files.singleFile.writeText(
-                    inputs.properties["ktfmtVersion"].toString().substringAfterLast(":")
-                )
-            }
-        }
-
-    named<ProcessResources>("processResources") {
-        from(persistKtfmtVersion) { into("codeartifact-plugin") }
-    }
-
     withType<ValidatePlugins>().configureEach {
         enableStricterValidation = true
         failOnWarning = true
@@ -135,7 +117,6 @@ testing {
             targets {
                 all {
                     testTask.configure {
-                        outputs.upToDateWhen { false }
                         testLogging {
                             events =
                                 setOf(

@@ -46,8 +46,11 @@ public interface CodeArtifactEndpoint {
         public fun String.toCodeArtifactEndpointOrNull(): CodeArtifactEndpoint? = fromUrl(this)
 
         // https://env-production-123456789012.d.codeartifact.eu-west-1.amazonaws.com/maven/env-data/com/abcd/xyz-sdk/1.22.3/xyz-sdk-1.22.3.pom
+        // domain is greedy up to the last '-' followed by the 12-digit account id, so domains
+        // containing '-<digit>' (e.g. 'team-2024') parse correctly; repository is a single path
+        // segment, so resource URLs (repository URL + artifact path) parse to the same repository.
         private val regex =
-            """^https://(?<domain>.*?)-(?<domainOwner>[0-9].*?).d.codeartifact.(?<region>.+?).amazonaws.com(?::[0-9]+)?/(?<type>.+?)/(?<repository>.+?)(?:/|\?.*|/\?.*)?$"""
+            """^https://(?<domain>[^./]+)-(?<domainOwner>[0-9]{12})\.d\.codeartifact\.(?<region>[^./]+)\.amazonaws\.com(?::[0-9]+)?/(?<type>[^/?]+)/(?<repository>[^/?]+)(?:/[^?]*)?(?:\?.*)?$"""
                 .toRegex()
     }
 }

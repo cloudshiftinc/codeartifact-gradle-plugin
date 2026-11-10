@@ -18,19 +18,19 @@ internal class GenericPackage(
     init {
         require(name.length <= 255) { "Package name cannot be longer than 255 characters" }
         require(name.matches(regex)) {
-            "Package name can only contain alphanumeric characters, hyphens, underscores, and periods"
+            "Package name must not be empty and cannot contain whitespace, '#' or '/'"
         }
 
         require(namespace.length <= 255) {
             "Package namespace cannot be longer than 255 characters"
         }
         require(namespace.matches(regex)) {
-            "Package namespace can only contain alphanumeric characters, hyphens, underscores, and periods"
+            "Package namespace must not be empty and cannot contain whitespace, '#' or '/'"
         }
 
         require(version.length <= 255) { "Package version cannot be longer than 255 characters" }
         require(version.matches(regex)) {
-            "Package version can only contain alphanumeric characters, hyphens, underscores, and periods"
+            "Package version must not be empty and cannot contain whitespace, '#' or '/'"
         }
 
         require(assets.isNotEmpty()) { "Package must have at least one asset" }
@@ -39,15 +39,12 @@ internal class GenericPackage(
     class Asset(val name: String, val content: File) {
         // https://docs.aws.amazon.com/codeartifact/latest/ug/generic-packages-overview.html
         init {
-            require(name.isNotBlank()) { "Asset name cannot be blank" }
+            // the regex also rules out blank names and leading/trailing/consecutive spaces
             require(name.matches(regex)) {
-                "Asset name can only contain alphanumeric characters, hyphens, underscores, and periods"
+                "Asset name must not be empty and cannot contain whitespace, '#' or '/'"
             }
-
-            require(name.trim() == name) { "Asset name cannot have leading or trailing whitespace" }
             require(name.length <= 255) { "Asset name cannot be longer than 255 characters" }
             require(name !in setOf(".", "..")) { "Asset name cannot be '.' or '..'" }
-            require(!name.contains("  ")) { "Asset name cannot contain consecutive spaces" }
         }
 
         @OptIn(ExperimentalStdlibApi::class)
