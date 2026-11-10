@@ -10,6 +10,7 @@ import io.kotest.matchers.string.shouldStartWith
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.URI
+import java.time.Instant
 import java.util.zip.GZIPOutputStream
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -111,7 +112,8 @@ class CodeArtifactResourceAccessorTest :
 
                     assertSoftly {
                         metadata.location shouldBe url
-                        metadata.lastModified.toString() shouldBe "Wed Apr 23 12:04:34 PDT 2025"
+                        metadata.lastModified?.toInstant() shouldBe
+                            Instant.parse("2025-04-23T19:04:34Z")
                         metadata.contentType shouldBe "text/xml"
                         metadata.filename shouldBe "test.xml"
                         metadata.contentLength shouldBe -1L
