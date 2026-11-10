@@ -34,6 +34,20 @@ dependencies {
 
 java { consistentResolution { useCompileClasspathVersions() } }
 
+// The Kotlin Gradle Plugin (pinned by `kotlin-dsl`) resolves Bouncy Castle 1.84 for its internal
+// publishing-validation tasks; it is build-time only and never shipped. Align it with the version
+// bundled in the Gradle distribution to clear GHSA-9pwp-9qqc-pr26 / GHSA-qp49-qgx5-5m26.
+configurations
+    .matching { it.name == "kotlinBouncyCastleConfiguration" }
+    .configureEach {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.bouncycastle") {
+                useVersion("1.86")
+                because("Bouncy Castle < 1.85 has known vulnerabilities")
+            }
+        }
+    }
+
 gradlePlugin {
     website = "https://github.com/cloudshiftinc/codeartifact-gradle-plugin"
     vcsUrl = "https://github.com/cloudshiftinc/codeartifact-gradle-plugin"
