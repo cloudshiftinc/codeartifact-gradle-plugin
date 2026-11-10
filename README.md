@@ -217,3 +217,14 @@ Cache.
 
 Only the Gradle Kotlin DSL is supported.
 
+
+## Releasing
+
+Releases are automated with [release-please](https://github.com/googleapis/release-please):
+
+1. Merge PRs to `main` using [Conventional Commits](https://www.conventionalcommits.org/) titles (PRs are squash-merged).
+2. release-please keeps a `chore(main): release X.Y.Z` PR open that bumps `version` in `gradle.properties` and updates [CHANGELOG.md](CHANGELOG.md).
+   The bump follows the commit types: `feat` → minor, `fix` / `deps` / `perf` → patch, `!` or a `BREAKING CHANGE:` footer → major.
+3. Merging the release PR tags `vX.Y.Z`, creates the [GitHub Release](https://github.com/cloudshiftinc/codeartifact-gradle-plugin/releases) with release notes, and publishes the plugin to the Gradle Plugin Portal.
+
+To force a specific version, add a `Release-As: X.Y.Z` footer to a commit on `main`.

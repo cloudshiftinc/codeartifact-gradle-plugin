@@ -103,21 +103,6 @@ tasks {
         enableStricterValidation = true
         failOnWarning = true
     }
-
-    withType<PublishToMavenRepository>().configureEach {
-        onlyIf {
-            when {
-                System.getenv("CI") != null ->
-                    when {
-                        version.toString().endsWith("SNAPSHOT") ->
-                            repository.name.endsWith("Snapshot")
-                        else -> repository.name.endsWith("Release")
-                    }
-
-                else -> repository.name.endsWith("Local")
-            }
-        }
-    }
 }
 
 testing {
