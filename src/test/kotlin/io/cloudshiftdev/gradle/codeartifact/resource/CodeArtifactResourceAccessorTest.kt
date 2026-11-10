@@ -3,14 +3,18 @@ package io.cloudshiftdev.gradle.codeartifact.resource
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.codeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.codeArtifactToken
+import io.cloudshiftdev.gradle.codeartifact.internal.gradle.DefaultGradleInternals
 import io.kotest.assertions.assertSoftly
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.URI
 import java.time.Instant
+import java.util.concurrent.Executors
 import java.util.zip.GZIPOutputStream
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -18,7 +22,9 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Response
 import okio.Buffer
+import org.gradle.api.internal.artifacts.repositories.transport.NetworkingIssueVerifier
 import org.gradle.internal.resource.ExternalResourceName
+import org.gradle.internal.resource.HttpErrorStatusCodeException
 import org.gradle.internal.resource.metadata.ExternalResourceMetaData
 
 class CodeArtifactResourceAccessorTest :
@@ -32,6 +38,7 @@ class CodeArtifactResourceAccessorTest :
                         httpClient,
                         proxyResolver = { null },
                         tokenResolver = { token },
+                        httpErrors = httpErrors,
                     )
 
                 val url = token.endpoint.withPath("test/test.xml")
@@ -147,7 +154,123 @@ class CodeArtifactResourceAccessorTest :
                 }
             }
         }
+
+        test("transient server errors surface as Gradle's retryable HTTP error") {
+            withMockWebServer { server, httpClient ->
+                val (accessor, url) = accessor(httpClient)
+                listOf(503, 429).forEach { code ->
+                    server.enqueue(MockResponse(code = code))
+                    val get =
+                        shouldThrow<HttpErrorStatusCodeException> {
+                            accessor.withContent(url.toExternalResourceName(), false) { _ -> }
+                        }
+                    get.statusCode shouldBe code
+                    NetworkingIssueVerifier.isLikelyTransientNetworkingIssue(get) shouldBe true
+
+                    server.enqueue(MockResponse(code = code))
+                    val head =
+                        shouldThrow<HttpErrorStatusCodeException> {
+                            accessor.getMetaData(url.toExternalResourceName(), false)
+                        }
+                    head.statusCode shouldBe code
+                }
+            }
+        }
+
+        test("auth errors are not retryable") {
+            withMockWebServer { server, httpClient ->
+                val (accessor, url) = accessor(httpClient)
+                server.enqueue(MockResponse(code = 403))
+                val e =
+                    shouldThrow<HttpErrorStatusCodeException> {
+                        accessor.withContent(url.toExternalResourceName(), false) { _ -> }
+                    }
+                NetworkingIssueVerifier.isLikelyTransientNetworkingIssue(e) shouldBe false
+            }
+        }
+
+        test("404 is reported as missing") {
+            withMockWebServer { server, httpClient ->
+                val (accessor, url) = accessor(httpClient)
+                server.enqueue(MockResponse(code = 404))
+                accessor
+                    .withContent(url.toExternalResourceName(), false) { _: InputStream ->
+                        error("content action must not run for a missing resource")
+                    }
+                    .shouldBeNull()
+
+                server.enqueue(MockResponse(code = 404))
+                accessor.getMetaData(url.toExternalResourceName(), false).shouldBeNull()
+            }
+        }
+
+        test("revalidate sends Cache-Control: max-age=0") {
+            withMockWebServer { server, httpClient ->
+                val (accessor, url) = accessor(httpClient)
+                server.enqueue(MockResponse(body = "x"))
+                server.enqueue(MockResponse(body = "x"))
+                server.enqueue(MockResponse())
+
+                accessor.withContent(url.toExternalResourceName(), false) { it ->
+                    it.readAllBytes()
+                }
+                server.takeRequest().headers["Cache-Control"].shouldBeNull()
+
+                accessor.withContent(url.toExternalResourceName(), true) { it -> it.readAllBytes() }
+                server.takeRequest().headers["Cache-Control"] shouldBe "max-age=0"
+
+                accessor.getMetaData(url.toExternalResourceName(), true)
+                server.takeRequest().headers["Cache-Control"] shouldBe "max-age=0"
+            }
+        }
+
+        test("Last-Modified parses correctly under concurrency") {
+            withMockWebServer { server, httpClient ->
+                val (accessor, url) = accessor(httpClient)
+                val requests = 64
+                repeat(requests) {
+                    server.enqueue(
+                        MockResponse()
+                            .newBuilder()
+                            .addHeader("Last-Modified", "Wed, 23 Apr 2025 19:04:34 GMT")
+                            .build()
+                    )
+                }
+                val expected = Instant.parse("2025-04-23T19:04:34Z")
+                val pool = Executors.newFixedThreadPool(16)
+                try {
+                    val results =
+                        (1..requests)
+                            .map {
+                                pool.submit<Instant> {
+                                    accessor
+                                        .getMetaData(url.toExternalResourceName(), false)!!
+                                        .lastModified!!
+                                        .toInstant()
+                                }
+                            }
+                            .map { it.get() }
+                    results.forEach { it shouldBe expected }
+                } finally {
+                    pool.shutdown()
+                }
+            }
+        }
     })
+
+private val httpErrors = DefaultGradleInternals().httpErrors
+
+private fun accessor(httpClient: OkHttpClient): Pair<CodeArtifactResourceAccessor, URI> {
+    val token = codeArtifactToken(endpoint = codeArtifactEndpoint(scheme = "codeartifact"))
+    val accessor =
+        CodeArtifactResourceAccessor(
+            httpClient,
+            proxyResolver = { null },
+            tokenResolver = { token },
+            httpErrors = httpErrors,
+        )
+    return accessor to token.endpoint.withPath("test/test.jar")
+}
 
 private fun URI.toExternalResourceName(): ExternalResourceName {
     return ExternalResourceName(this)

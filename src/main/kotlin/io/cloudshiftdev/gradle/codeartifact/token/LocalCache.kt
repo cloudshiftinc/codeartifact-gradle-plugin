@@ -14,8 +14,13 @@ import io.cloudshiftdev.gradle.codeartifact.CodeArtifactToken
 import io.cloudshiftdev.gradle.codeartifact.cacheKey
 import io.cloudshiftdev.gradle.codeartifact.sha256
 import java.io.File
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 import org.gradle.api.logging.Logging
 
 internal class LocalCache(private val cacheDir: File) {
@@ -36,9 +41,23 @@ internal class LocalCache(private val cacheDir: File) {
         init {
             AeadConfig.register()
         }
+
+        // Per cache file and JVM-wide (shared by every LocalCache instance): parallel dependency
+        // resolution would otherwise race on the cache file and fetch duplicate tokens, while
+        // other endpoints are not blocked behind a slow token fetch. Keyset creation is safe
+        // without a lock (first writer wins).
+        private val locks = ConcurrentHashMap<String, Any>()
     }
 
     fun load(
+        endpoint: CodeArtifactEndpoint,
+        tokenSupplier: () -> CodeArtifactToken,
+    ): CodeArtifactToken {
+        val lock = locks.computeIfAbsent(cacheFile(endpoint).absolutePath) { Any() }
+        return synchronized(lock) { loadLocked(endpoint, tokenSupplier) }
+    }
+
+    private fun loadLocked(
         endpoint: CodeArtifactEndpoint,
         tokenSupplier: () -> CodeArtifactToken,
     ): CodeArtifactToken {
@@ -91,11 +110,11 @@ internal class LocalCache(private val cacheDir: File) {
             token.expiration,
         )
 
-        cacheFile.parentFile.mkdirs()
         val tokenJson = mapper.writeValueAsString(token)
         logger.debug("CodeArtifact token json: {}", tokenJson)
 
-        encrypt(tokenJson, token.endpoint.cacheKey).let { cacheFile.writeBytes(it) }
+        val bytes = encrypt(tokenJson, token.endpoint.cacheKey)
+        writeAtomically(cacheFile, bytes, replaceExisting = true)
     }
 
     private fun cacheFile(endpoint: CodeArtifactEndpoint): File {
@@ -132,7 +151,40 @@ internal class LocalCache(private val cacheDir: File) {
                 masterKey.primitive(),
                 noAssociatedData,
             )
-        keysetFile.writeText(serializedEncryptedKeyset)
+        // first writer wins (also across processes): never replace an existing keyset, as tokens
+        // already cached with it would become unreadable.
+        writeAtomically(
+            keysetFile,
+            serializedEncryptedKeyset.toByteArray(),
+            replaceExisting = false,
+        )
+    }
+
+    private fun writeAtomically(target: File, bytes: ByteArray, replaceExisting: Boolean) {
+        target.parentFile.mkdirs()
+        val tmp = Files.createTempFile(target.parentFile.toPath(), target.name, ".tmp")
+        try {
+            Files.write(tmp, bytes)
+            if (replaceExisting) {
+                Files.move(tmp, target.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
+            } else {
+                try {
+                    Files.createLink(target.toPath(), tmp)
+                } catch (_: FileAlreadyExistsException) {
+                    // another writer won
+                } catch (_: Exception) {
+                    // no hard-link support (UnsupportedOperationException, or an IOException on
+                    // e.g. FAT/SMB): a non-replacing move still lets the first writer win
+                    try {
+                        Files.move(tmp, target.toPath())
+                    } catch (_: FileAlreadyExistsException) {
+                        // another writer won
+                    }
+                }
+            }
+        } finally {
+            Files.deleteIfExists(tmp)
+        }
     }
 }
 

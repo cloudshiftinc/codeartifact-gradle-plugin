@@ -2,12 +2,14 @@ package io.cloudshiftdev.gradle.codeartifact.resource
 
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint.Companion.toCodeArtifactEndpointOrNull
 import io.cloudshiftdev.gradle.codeartifact.ProxyResolver
+import io.cloudshiftdev.gradle.codeartifact.cacheKey
+import io.cloudshiftdev.gradle.codeartifact.internal.gradle.HttpErrorFactory
 import io.cloudshiftdev.gradle.codeartifact.toHttpsProtocolUrl
 import io.cloudshiftdev.gradle.codeartifact.token.TokenResolver
 import java.io.InputStream
 import java.net.URI
-import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
@@ -37,6 +39,7 @@ internal class CodeArtifactResourceConnectorFactory(
     private val okHttpClient: OkHttpClient,
     private val proxyResolver: ProxyResolver,
     private val tokenResolver: TokenResolver,
+    private val httpErrors: HttpErrorFactory,
 ) : ResourceConnectorFactory {
     private val supportedProtocols = setOf("codeartifact")
 
@@ -47,7 +50,8 @@ internal class CodeArtifactResourceConnectorFactory(
     override fun createResourceConnector(
         connectionDetails: ResourceConnectorSpecification
     ): ExternalResourceConnector {
-        val accessor = CodeArtifactResourceAccessor(okHttpClient, proxyResolver, tokenResolver)
+        val accessor =
+            CodeArtifactResourceAccessor(okHttpClient, proxyResolver, tokenResolver, httpErrors)
         return DefaultExternalResourceConnector(
             accessor,
             CodeArtifactResourceLister(accessor),
@@ -65,8 +69,14 @@ internal class CodeArtifactResourceAccessor(
     private val okHttpClient: OkHttpClient,
     private val proxyResolver: ProxyResolver,
     private val tokenResolver: TokenResolver,
+    private val httpErrors: HttpErrorFactory,
 ) : AbstractExternalResourceAccessor() {
     private val logger = Logging.getLogger(CodeArtifactResourceAccessor::class.java)
+
+    /**
+     * Proxy base URL per endpoint (domain/owner/region); avoids env/property lookups per request.
+     */
+    private val proxyBaseUrls = ConcurrentHashMap<String, Optional<URI>>()
 
     private companion object {
         private val UserAgent: String
@@ -95,11 +105,18 @@ internal class CodeArtifactResourceAccessor(
     override fun openResource(
         location: ExternalResourceName,
         revalidate: Boolean,
-    ): ExternalResourceReadResponse {
+    ): ExternalResourceReadResponse? {
         return try {
-            val (url, request) = prepareGetRequest(location)
+            val (url, request) = prepareGetRequest(location, revalidate)
             val response = executeRequest(request)
+            // Gradle's contract (see HttpResourceAccessor): null means the resource is missing;
+            // a closed 404 response would otherwise be read and fail with "closed".
+            if (response.code == 404) return null
             OkHttpResponse(url, response)
+        } catch (e: HttpStatusFailure) {
+            // Gradle reports these (and retries transient ones); don't log them as errors here.
+            logger.debug("Error retrieving resource: ${location.uri}", e.gradleException)
+            throw e.gradleException
         } catch (t: Throwable) {
             logger.error("Error retrieving resource: ${location.uri}", t)
             throw t
@@ -111,27 +128,41 @@ internal class CodeArtifactResourceAccessor(
         revalidate: Boolean,
     ): ExternalResourceMetaData? {
         return try {
-            val (url, request) = prepareGetRequest(location)
+            val (url, request) = prepareGetRequest(location, revalidate)
 
             executeRequest(request.newBuilder().head().build()).use { response ->
                 if (response.code == 404) return null
 
                 CodeArtifactMetadata(url, response)
             }
+        } catch (e: HttpStatusFailure) {
+            // Gradle reports these (and retries transient ones); don't log them as errors here.
+            logger.debug(
+                "Error retrieving metadata for resource: ${location.uri}",
+                e.gradleException,
+            )
+            throw e.gradleException
         } catch (t: Throwable) {
             logger.error("Error retrieving metadata for resource: ${location.uri}", t)
             throw t
         }
     }
 
-    private fun prepareGetRequest(location: ExternalResourceName): Pair<HttpUrl, Request> {
+    private fun prepareGetRequest(
+        location: ExternalResourceName,
+        revalidate: Boolean,
+    ): Pair<HttpUrl, Request> {
         val endpoint =
             location.uri.toCodeArtifactEndpointOrNull()
                 ?: error("Invalid CodeArtifact endpoint: ${location.uri}")
 
-        val rawUrl =
-            proxyResolver.resolve(endpoint)?.resolve(location.uri.path)
-                ?: location.uri.toHttpsProtocolUrl()
+        val proxyBaseUrl =
+            proxyBaseUrls
+                .computeIfAbsent(endpoint.cacheKey) {
+                    Optional.ofNullable(proxyResolver.resolve(endpoint))
+                }
+                .orElse(null)
+        val rawUrl = proxyBaseUrl?.resolve(location.uri.path) ?: location.uri.toHttpsProtocolUrl()
 
         val url = rawUrl.toHttpUrlOrNull() ?: error("Invalid URL: $rawUrl")
 
@@ -140,15 +171,30 @@ internal class CodeArtifactResourceAccessor(
             url(url)
             header("Authorization", "Bearer $token")
             header("User-Agent", UserAgent)
+            // Matches Gradle's HttpResourceAccessor: ask caches (e.g. a CDN proxy) to revalidate.
+            if (revalidate) header("Cache-Control", "max-age=0")
         }
         return Pair(url, request)
     }
 
+    /**
+     * Executes [request]. A 404 is returned (closed) for the caller to report as missing; any other
+     * non-success status is thrown as Gradle's HTTP error exception so Gradle's retry (5xx/408/429)
+     * and repository-disabling logic applies.
+     */
     private fun executeRequest(request: Request): Response {
         val response = okHttpClient.newCall(request).execute()
-        if (!response.isSuccessful) response.close()
-        return response
+        if (response.isSuccessful) return response
+        response.close()
+        if (response.code == 404) return response
+        throw HttpStatusFailure(
+            httpErrors.create(request.method, request.url.toUri(), response.code, response.message)
+        )
     }
+
+    /** Carries the Gradle HTTP error out of [executeRequest]; unwrapped before reaching Gradle. */
+    private class HttpStatusFailure(val gradleException: RuntimeException) :
+        RuntimeException(null, null, false, false)
 
     private class OkHttpResponse(source: HttpUrl, private val response: Response) :
         ExternalResourceReadResponse {
@@ -167,19 +213,12 @@ internal class CodeArtifactResourceAccessor(
         ExternalResourceMetaData {
         private companion object {
             val ZeroDate = Date(0)
-            val DateFormat = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US)
         }
 
         private val location = source.toUri()
 
-        private val lastModified: Date =
-            response.headers["Last-Modified"]?.let {
-                try {
-                    DateFormat.parse(it)
-                } catch (_: Exception) {
-                    ZeroDate
-                }
-            } ?: ZeroDate
+        // OkHttp's date parsing is thread-safe (resolution runs in parallel).
+        private val lastModified: Date = response.headers.getDate("Last-Modified") ?: ZeroDate
 
         private val contentType = response.header("Content-Type")
 

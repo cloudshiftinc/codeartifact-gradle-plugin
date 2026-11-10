@@ -3,6 +3,7 @@ package io.cloudshiftdev.gradle.codeartifact.resource
 import io.cloudshiftdev.gradle.codeartifact.DefaultProxyResolver
 import io.cloudshiftdev.gradle.codeartifact.DefaultSystemVarResolver
 import io.cloudshiftdev.gradle.codeartifact.codeArtifactToken
+import io.cloudshiftdev.gradle.codeartifact.internal.gradle.PlainHttpErrorFactory
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import okhttp3.OkHttpClient
@@ -15,9 +16,9 @@ class CodeArtifactResourceConnectorFactoryTest :
             CodeArtifactResourceConnectorFactory(
                 httpClient,
                 DefaultProxyResolver(DefaultSystemVarResolver()),
-            ) {
-                token
-            }
+                tokenResolver = { token },
+                httpErrors = PlainHttpErrorFactory,
+            )
 
         test("supported protocols works") {
             factory.supportedProtocols shouldBe setOf("codeartifact")

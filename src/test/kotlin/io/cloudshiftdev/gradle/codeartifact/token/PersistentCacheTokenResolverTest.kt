@@ -7,6 +7,9 @@ import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 class PersistentCacheTokenResolverTest : FunSpec() {
     init {
@@ -37,6 +40,39 @@ class PersistentCacheTokenResolverTest : FunSpec() {
             repeat(10) { cache.resolve(token.endpoint) }
 
             coVerify(exactly = 10) { delegate.resolve(token.endpoint) }
+        }
+
+        test("concurrent loads against an empty cache fetch once and keep the cache readable") {
+            val token = codeArtifactToken()
+            val calls = AtomicInteger()
+            val dir = tempdir()
+            val cache =
+                PersistentCacheTokenResolver(
+                    { calls.incrementAndGet().let { token } },
+                    dir,
+                )
+
+            val pool = Executors.newFixedThreadPool(16)
+            try {
+                val start = CountDownLatch(1)
+                val futures =
+                    (1..32).map {
+                        pool.submit<Any> {
+                            start.await()
+                            cache.resolve(token.endpoint)
+                        }
+                    }
+                start.countDown()
+                futures.forEach { it.get() shouldBe token }
+            } finally {
+                pool.shutdown()
+            }
+            calls.get() shouldBe 1
+
+            // a fresh instance (e.g. another build) reads the persisted token without fetching
+            PersistentCacheTokenResolver({ error("should not fetch") }, dir)
+                .resolve(token.endpoint) shouldBe token
+            dir.listFiles()!!.none { it.name.endsWith(".tmp") } shouldBe true
         }
     }
 }

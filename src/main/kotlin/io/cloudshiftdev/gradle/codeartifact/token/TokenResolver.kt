@@ -4,6 +4,7 @@ import io.cloudshiftdev.gradle.codeartifact.CodeArtifactEndpoint
 import io.cloudshiftdev.gradle.codeartifact.CodeArtifactToken
 import io.cloudshiftdev.gradle.codeartifact.cacheKey
 import io.cloudshiftdev.gradle.codeartifact.service.CodeArtifactService
+import io.cloudshiftdev.gradle.codeartifact.service.DefaultCodeArtifactService
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import org.gradle.api.GradleException
@@ -24,6 +25,13 @@ internal class DefaultTokenResolver(private val codeArtifactService: CodeArtifac
 
     override fun resolve(endpoint: CodeArtifactEndpoint): CodeArtifactToken {
         return resolver.resolve(endpoint)
+    }
+
+    companion object {
+        /** Process-wide instance so the in-memory token cache survives across daemon builds. */
+        val shared: DefaultTokenResolver by lazy {
+            DefaultTokenResolver(DefaultCodeArtifactService.shared)
+        }
     }
 }
 
@@ -61,8 +69,15 @@ internal class MemoryCacheTokenResolver(private val delegate: TokenResolver) : T
     private val cache = ConcurrentHashMap<String, CodeArtifactToken>()
 
     override fun resolve(endpoint: CodeArtifactEndpoint): CodeArtifactToken {
-        return cache[endpoint.cacheKey]?.takeIf { !it.expired }
-            ?: delegate.resolve(endpoint).also { cache[endpoint.cacheKey] = it }
+        cache[endpoint.cacheKey]
+            ?.takeIf { !it.expired }
+            ?.let {
+                return it
+            }
+        // compute() locks per key, so concurrent first requests trigger a single fetch
+        return cache.compute(endpoint.cacheKey) { _, current ->
+            current?.takeIf { !it.expired } ?: delegate.resolve(endpoint)
+        }!!
     }
 }
 
