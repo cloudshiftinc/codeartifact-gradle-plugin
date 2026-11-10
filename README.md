@@ -211,7 +211,9 @@ This plugin supports being applied as a Gradle plugin as part of a custom Gradle
 Releases < 2.0.0 require Gradle 8.6 or later running on Java 17 or later and is compatible with the Gradle Configuration
 Cache. 
 
-2.0.0+ require Gradle 9.0 or later running on Java 21 or later and is compatible with the Gradle Configuration.
+2.0.0+ require Gradle 9.0 or later running on Java 21 or later and is compatible with the Gradle Configuration Cache.
+
+2.2.0+ is required for Gradle 9.9 or later (Gradle 9.9 relocated an internal API used by this plugin).
 
 Only the Gradle Kotlin DSL is supported.
 
